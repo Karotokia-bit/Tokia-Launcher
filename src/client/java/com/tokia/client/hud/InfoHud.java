@@ -91,7 +91,9 @@ public final class InfoHud {
             default -> 4;
         };
 
-        g.fill(x, y, x + w, y + h, 0x80000000);
+        if (cfg.infoBackground) {
+            g.fill(x, y, x + w, y + h, 0x80000000);
+        }
         for (int i = 0; i < lines.size(); i++) {
             g.text(mc.font, lines.get(i), x + 3, y + 2 + i * lineH, 0xFFFFFFFF, true);
         }

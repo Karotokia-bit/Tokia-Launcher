@@ -32,10 +32,17 @@ public final class KeystrokesHud {
         key(g, mc, "A", x, y + step, BOX, BOX, mc.options.keyLeft.isDown());
         key(g, mc, "S", x + step, y + step, BOX, BOX, mc.options.keyDown.isDown());
         key(g, mc, "D", x + 2 * step, y + step, BOX, BOX, mc.options.keyRight.isDown());
-        int mouseW = (3 * BOX + 2 * GAP - GAP) / 2;
-        key(g, mc, "L " + ClickCounter.left(), x, y + 2 * step, mouseW, BOX, mc.options.keyAttack.isDown());
-        key(g, mc, "R " + ClickCounter.right(), x + mouseW + GAP, y + 2 * step, mouseW, BOX, mc.options.keyUse.isDown());
-        key(g, mc, "___", x, y + 3 * step, 3 * BOX + 2 * GAP, 12, mc.options.keyJump.isDown());
+        TokiaConfig cfg = TokiaConfig.get();
+        int next = 2;
+        if (cfg.keystrokesMouse) {
+            int mouseW = (3 * BOX + 2 * GAP - GAP) / 2;
+            key(g, mc, "L " + ClickCounter.left(), x, y + next * step, mouseW, BOX, mc.options.keyAttack.isDown());
+            key(g, mc, "R " + ClickCounter.right(), x + mouseW + GAP, y + next * step, mouseW, BOX, mc.options.keyUse.isDown());
+            next++;
+        }
+        if (cfg.keystrokesSpace) {
+            key(g, mc, "___", x, y + next * step, 3 * BOX + 2 * GAP, 12, mc.options.keyJump.isDown());
+        }
     }
 
     private static void key(GuiGraphicsExtractor g, Minecraft mc, String label, int x, int y, int w, int h, boolean down) {
