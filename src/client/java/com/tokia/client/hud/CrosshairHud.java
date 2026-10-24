@@ -22,7 +22,7 @@ public final class CrosshairHud {
                 return;
             }
             Minecraft mc = Minecraft.getInstance();
-            if (mc.options.hideGui || !mc.options.getCameraType().isFirstPerson()) {
+            if (mc.gui.hud.isHidden() || !mc.options.getCameraType().isFirstPerson()) {
                 return;
             }
             draw(graphics, cfg);
