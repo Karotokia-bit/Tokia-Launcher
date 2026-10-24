@@ -1,6 +1,5 @@
 package com.tokia.client;
 
-import com.mojang.blaze3d.platform.InputConstants;
 import com.tokia.TokiaMod;
 import com.tokia.client.config.TokiaConfig;
 import com.tokia.client.gui.TokiaMenuScreen;
@@ -14,12 +13,13 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.minecraft.client.KeyMapping;
+import org.lwjgl.sdl.SDLScancode;
 
 public class TokiaClient implements ClientModInitializer {
     private static final KeyMapping.Category CATEGORY = KeyMapping.Category.register(TokiaMod.id("main"));
 
     private static final KeyMapping OPEN_MENU = KeyMappingHelper.registerKeyMapping(
-        new KeyMapping("key.tokia.open_menu", InputConstants.Type.KEYSYM, InputConstants.KEY_RSHIFT, CATEGORY));
+        new KeyMapping("key.tokia.open_menu", SDLScancode.SDL_SCANCODE_RSHIFT, CATEGORY));
 
     @Override
     public void onInitializeClient() {
