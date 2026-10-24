@@ -22,7 +22,7 @@ public final class EffectsHud {
 
     private static void render(GuiGraphicsExtractor g, net.minecraft.client.DeltaTracker delta) {
         Minecraft mc = Minecraft.getInstance();
-        if (!TokiaConfig.get().effectsHud || mc.player == null || mc.options.hideGui) {
+        if (!TokiaConfig.get().effectsHud || mc.player == null || mc.gui.hud.isHidden()) {
             return;
         }
         List<String> lines = new ArrayList<>();
