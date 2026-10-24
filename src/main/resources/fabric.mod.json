@@ -1,0 +1,27 @@
+{
+	"schemaVersion": 1,
+	"id": "tokia",
+	"version": "${version}",
+	"name": "Tokia",
+	"description": "Tokia ist ein schlanker, kostenloser Client-Mod mit Custom Crosshair, HUD, Keystrokes, CPS und mehr.",
+	"authors": [
+		"Tokia"
+	],
+	"license": "All-Rights-Reserved",
+	"icon": "assets/tokia/icon.png",
+	"environment": "client",
+	"entrypoints": {
+		"main": [
+			"com.tokia.TokiaMod"
+		],
+		"client": [
+			"com.tokia.client.TokiaClient"
+		]
+	},
+	"depends": {
+		"fabricloader": ">=0.19.5",
+		"minecraft": "~26.3",
+		"java": ">=25",
+		"fabric-api": "*"
+	}
+}
