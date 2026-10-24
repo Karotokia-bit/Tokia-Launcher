@@ -21,7 +21,7 @@ public final class KeystrokesHud {
 
     private static void render(GuiGraphicsExtractor g, net.minecraft.client.DeltaTracker delta) {
         Minecraft mc = Minecraft.getInstance();
-        if (!TokiaConfig.get().keystrokes || mc.player == null || mc.options.hideGui) {
+        if (!TokiaConfig.get().keystrokes || mc.player == null || mc.gui.hud.isHidden()) {
             return;
         }
         int step = BOX + GAP;
