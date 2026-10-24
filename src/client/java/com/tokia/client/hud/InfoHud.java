@@ -41,7 +41,7 @@ public final class InfoHud {
 
         TokiaConfig cfg = TokiaConfig.get();
         Minecraft mc = Minecraft.getInstance();
-        if (!cfg.infoEnabled || mc.player == null || mc.options.hideGui) {
+        if (!cfg.infoEnabled || mc.player == null || mc.gui.hud.isHidden()) {
             return;
         }
 
