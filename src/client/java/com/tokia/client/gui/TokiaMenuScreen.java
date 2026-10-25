@@ -97,11 +97,14 @@ public class TokiaMenuScreen extends Screen {
         info.add(new SwitchRow(tr("tokia.opt.cps"), () -> c.showCps, v -> c.showCps = v));
         info.add(new SwitchRow(tr("tokia.opt.clock"), () -> c.showClock, v -> c.showClock = v));
         info.add(new SwitchRow(tr("tokia.opt.background"), () -> c.infoBackground, v -> c.infoBackground = v));
-        info.add(new ChoiceRow(tr("tokia.opt.corner"),
-            new String[] {tr("tokia.corner.0"), tr("tokia.corner.1"), tr("tokia.corner.2"), tr("tokia.corner.3")},
-            () -> c.infoCorner, v -> c.infoCorner = v));
+        List<Row> extras = new ArrayList<>();
+        extras.add(new SwitchRow(tr("tokia.opt.direction"), () -> c.showDirection, v -> c.showDirection = v));
+        extras.add(new SwitchRow(tr("tokia.opt.speed"), () -> c.showSpeed, v -> c.showSpeed = v));
+        extras.add(new SwitchRow(tr("tokia.opt.ram"), () -> c.showRam, v -> c.showRam = v));
+        extras.add(new SwitchRow(tr("tokia.opt.session"), () -> c.showSession, v -> c.showSession = v));
         List<Page> infoPages = new ArrayList<>();
-        infoPages.add(new Page("", info));
+        infoPages.add(new Page(tr("tokia.page.display"), info));
+        infoPages.add(new Page(tr("tokia.page.extras"), extras));
         modules.add(new Module(tr("tokia.module.info"), tr("tokia.module.info.desc"),
             () -> c.infoEnabled, v -> c.infoEnabled = v, c::resetInfo, false, infoPages));
 
@@ -132,6 +135,16 @@ public class TokiaMenuScreen extends Screen {
         effectPages.add(new Page("", effects));
         modules.add(new Module(tr("tokia.module.effects"), tr("tokia.module.effects.desc"),
             () -> c.effectsHud, v -> c.effectsHud = v, c::resetEffects, false, effectPages));
+
+        // Zoom
+        List<Row> zoom = new ArrayList<>();
+        zoom.add(new SwitchRow(tr("tokia.opt.enabled"), () -> c.zoomEnabled, v -> c.zoomEnabled = v));
+        zoom.add(new SliderRow(tr("tokia.opt.zoom_fov"), () -> c.zoomFov, v -> c.zoomFov = v, 30, 90, "", 0));
+        zoom.add(new TextRow(tr("tokia.module.zoom.text")));
+        List<Page> zoomPages = new ArrayList<>();
+        zoomPages.add(new Page("", zoom));
+        modules.add(new Module(tr("tokia.module.zoom"), tr("tokia.module.zoom.desc"),
+            () -> c.zoomEnabled, v -> c.zoomEnabled = v, c::resetZoom, false, zoomPages));
     }
 
     // ------------------------------------------------------------------ Zeichnen
@@ -182,6 +195,13 @@ public class TokiaMenuScreen extends Screen {
             g.fill(px + SIDE_W - 16, iy + 8, px + SIDE_W - 10, iy + 14, on ? 0xFF55FF55 : 0xFF555566);
             hit(px + SIDE_W - 20, iy + 4, 14, 14, () -> m.setEnabled.accept(!m.enabled.getAsBoolean()));
         }
+        int ebx = px + 8;
+        int eby = py + ph - 40;
+        int ebw = SIDE_W - 16;
+        String editLabel = tr("tokia.menu.edit_hud");
+        g.fill(ebx, eby, ebx + ebw, eby + 16, inside(ebx, eby, ebw, 16) ? 0xFF2E2E42 : 0xFF1C1C2B);
+        g.text(this.font, editLabel, ebx + (ebw - this.font.width(editLabel)) / 2, eby + 4, TEXT, false);
+        hit(ebx, eby, ebw, 16, () -> this.minecraft.gui.setScreen(new HudEditorScreen(this)));
         g.text(this.font, tr("tokia.menu.hint"), px + 12, py + ph - 14, SUB, false);
 
         // Inhalt

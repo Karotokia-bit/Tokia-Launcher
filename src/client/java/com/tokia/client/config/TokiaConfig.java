@@ -16,7 +16,6 @@ public final class TokiaConfig {
         0x5555FF, 0xAA55FF, 0xFF55FF, 0xFF8FB1, 0xCCCCCC, 0x888888, 0x444444, 0x000000
     };
     public static final int STYLE_COUNT = 4;   // Kreuz, Punkt, Kreis, Quadrat
-    public static final int CORNER_COUNT = 4;  // oben links, oben rechts, unten links, unten rechts
 
     // Crosshair
     public boolean crosshairEnabled = true;
@@ -37,7 +36,10 @@ public final class TokiaConfig {
     public boolean showCps = true;
     public boolean showClock = false;
     public boolean infoBackground = true;
-    public int infoCorner = 0;
+    public boolean showDirection = false;
+    public boolean showSpeed = false;
+    public boolean showRam = false;
+    public boolean showSession = false;
 
     // Keystrokes
     public boolean keystrokes = true;
@@ -47,6 +49,20 @@ public final class TokiaConfig {
     // Weitere Module
     public boolean armorHud = true;
     public boolean effectsHud = true;
+
+    // Zoom (Sichtfeld beim Zoomen, 30 = staerkster Zoom)
+    public boolean zoomEnabled = true;
+    public int zoomFov = 30;
+
+    // HUD-Positionen (0 = linker/oberer Rand, 1 = rechter/unterer Rand)
+    public double infoX = 0.0;
+    public double infoY = 0.0;
+    public double keysX = 0.0;
+    public double keysY = 0.35;
+    public double armorX = 1.0;
+    public double armorY = 0.35;
+    public double effectsX = 0.0;
+    public double effectsY = 1.0;
 
     /** Crosshair-Farbe als ARGB inklusive Deckkraft. */
     public int color() {
@@ -78,7 +94,10 @@ public final class TokiaConfig {
         showCps = d.showCps;
         showClock = d.showClock;
         infoBackground = d.infoBackground;
-        infoCorner = d.infoCorner;
+        showDirection = d.showDirection;
+        showSpeed = d.showSpeed;
+        showRam = d.showRam;
+        showSession = d.showSession;
     }
 
     public void resetKeystrokes() {
@@ -94,6 +113,24 @@ public final class TokiaConfig {
 
     public void resetEffects() {
         effectsHud = new TokiaConfig().effectsHud;
+    }
+
+    public void resetZoom() {
+        TokiaConfig d = new TokiaConfig();
+        zoomEnabled = d.zoomEnabled;
+        zoomFov = d.zoomFov;
+    }
+
+    public void resetPositions() {
+        TokiaConfig d = new TokiaConfig();
+        infoX = d.infoX;
+        infoY = d.infoY;
+        keysX = d.keysX;
+        keysY = d.keysY;
+        armorX = d.armorX;
+        armorY = d.armorY;
+        effectsX = d.effectsX;
+        effectsY = d.effectsY;
     }
 
     // ---- Laden / Speichern ----

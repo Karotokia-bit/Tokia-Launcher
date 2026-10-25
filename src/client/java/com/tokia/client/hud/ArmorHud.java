@@ -8,11 +8,17 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
 
-/** Zeigt Haltbarkeit der getragenen Ruestung am rechten Bildschirmrand. */
+import java.util.ArrayList;
+import java.util.List;
+
+/** Zeigt die Haltbarkeit der getragenen Ruestung. */
 public final class ArmorHud {
     private static final EquipmentSlot[] SLOTS = {
         EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET
     };
+
+    private record Line(String name, String pct, int pctColor) {
+    }
 
     private ArmorHud() {
     }
@@ -21,13 +27,11 @@ public final class ArmorHud {
         HudElementRegistry.addLast(TokiaMod.id("armor"), ArmorHud::render);
     }
 
-    private static void render(GuiGraphicsExtractor g, net.minecraft.client.DeltaTracker delta) {
-        Minecraft mc = Minecraft.getInstance();
-        if (!TokiaConfig.get().armorHud || mc.player == null || mc.gui.hud.isHidden()) {
-            return;
+    private static List<Line> lines(Minecraft mc) {
+        List<Line> out = new ArrayList<>();
+        if (mc.player == null) {
+            return out;
         }
-        int lineH = mc.font.lineHeight + 3;
-        int y = g.guiHeight() / 2 - 20;
         for (EquipmentSlot slot : SLOTS) {
             ItemStack stack = mc.player.getItemBySlot(slot);
             if (stack.isEmpty()) {
@@ -42,14 +46,46 @@ public final class ArmorHud {
                 pct = " " + percent + "%";
                 pctColor = percent > 50 ? 0xFF55FF55 : percent > 25 ? 0xFFFFFF55 : 0xFFFF5555;
             }
-            int total = mc.font.width(name) + mc.font.width(pct);
-            int x = g.guiWidth() - total - 6;
-            g.fill(x - 3, y - 2, g.guiWidth() - 3, y + mc.font.lineHeight + 1, 0x80000000);
-            g.text(mc.font, name, x, y, 0xFFFFFFFF, true);
-            if (!pct.isEmpty()) {
-                g.text(mc.font, pct, x + mc.font.width(name), y, pctColor, true);
+            out.add(new Line(name, pct, pctColor));
+        }
+        return out;
+    }
+
+    /** Groesse {Breite, Hoehe}; auch fuer den HUD-Editor. */
+    public static int[] size(Minecraft mc) {
+        List<Line> lines = lines(mc);
+        if (lines.isEmpty()) {
+            return new int[] {90, 12};
+        }
+        int w = 0;
+        for (Line l : lines) {
+            w = Math.max(w, mc.font.width(l.name()) + mc.font.width(l.pct()));
+        }
+        return new int[] {w + 8, lines.size() * (mc.font.lineHeight + 3)};
+    }
+
+    private static void render(GuiGraphicsExtractor g, net.minecraft.client.DeltaTracker delta) {
+        Minecraft mc = Minecraft.getInstance();
+        TokiaConfig cfg = TokiaConfig.get();
+        if (!cfg.armorHud || mc.player == null || mc.gui.hud.isHidden()) {
+            return;
+        }
+        List<Line> lines = lines(mc);
+        if (lines.isEmpty()) {
+            return;
+        }
+        int[] s = size(mc);
+        int x = HudLayout.x(cfg.armorX, s[0], g.guiWidth());
+        int y = HudLayout.y(cfg.armorY, s[1], g.guiHeight());
+        int lineH = mc.font.lineHeight + 3;
+        for (int i = 0; i < lines.size(); i++) {
+            Line l = lines.get(i);
+            int ly = y + i * lineH;
+            g.fill(x, ly, x + s[0], ly + lineH - 1, 0x80000000);
+            g.text(mc.font, l.name(), x + 4, ly + 2, 0xFFFFFFFF, true);
+            if (!l.pct().isEmpty()) {
+                g.text(mc.font, l.pct(), x + 4 + mc.font.width(l.name()), ly + 2, l.pctColor(), true);
             }
-            y += lineH;
         }
     }
 }

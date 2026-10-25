@@ -7,7 +7,7 @@ import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 
-/** Zeigt WASD, Leertaste und Maustasten (mit CPS) am linken Bildschirmrand. */
+/** Zeigt WASD, Maustasten (mit CPS) und Leertaste. */
 public final class KeystrokesHud {
     private static final int BOX = 18;
     private static final int GAP = 2;
@@ -19,20 +19,30 @@ public final class KeystrokesHud {
         HudElementRegistry.addLast(TokiaMod.id("keystrokes"), KeystrokesHud::render);
     }
 
+    /** Groesse {Breite, Hoehe}; auch fuer den HUD-Editor. */
+    public static int[] size() {
+        TokiaConfig cfg = TokiaConfig.get();
+        int step = BOX + GAP;
+        int next = 2 + (cfg.keystrokesMouse ? 1 : 0);
+        int h = cfg.keystrokesSpace ? next * step + 12 : next * step - GAP;
+        return new int[] {3 * BOX + 2 * GAP, h};
+    }
+
     private static void render(GuiGraphicsExtractor g, net.minecraft.client.DeltaTracker delta) {
         Minecraft mc = Minecraft.getInstance();
-        if (!TokiaConfig.get().keystrokes || mc.player == null || mc.gui.hud.isHidden()) {
+        TokiaConfig cfg = TokiaConfig.get();
+        if (!cfg.keystrokes || mc.player == null || mc.gui.hud.isHidden()) {
             return;
         }
+        int[] s = size();
         int step = BOX + GAP;
-        int x = 6;
-        int y = g.guiHeight() / 2 - 30;
+        int x = HudLayout.x(cfg.keysX, s[0], g.guiWidth());
+        int y = HudLayout.y(cfg.keysY, s[1], g.guiHeight());
 
         key(g, mc, "W", x + step, y, BOX, BOX, mc.options.keyUp.isDown());
         key(g, mc, "A", x, y + step, BOX, BOX, mc.options.keyLeft.isDown());
         key(g, mc, "S", x + step, y + step, BOX, BOX, mc.options.keyDown.isDown());
         key(g, mc, "D", x + 2 * step, y + step, BOX, BOX, mc.options.keyRight.isDown());
-        TokiaConfig cfg = TokiaConfig.get();
         int next = 2;
         if (cfg.keystrokesMouse) {
             int mouseW = (3 * BOX + 2 * GAP - GAP) / 2;

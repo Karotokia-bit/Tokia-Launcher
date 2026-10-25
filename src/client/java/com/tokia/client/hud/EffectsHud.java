@@ -11,7 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-/** Zeigt aktive Traenke/Effekte mit Restdauer unten links. */
+/** Zeigt aktive Traenke/Effekte mit Restdauer. */
 public final class EffectsHud {
     private EffectsHud() {
     }
@@ -20,12 +20,11 @@ public final class EffectsHud {
         HudElementRegistry.addLast(TokiaMod.id("effects"), EffectsHud::render);
     }
 
-    private static void render(GuiGraphicsExtractor g, net.minecraft.client.DeltaTracker delta) {
-        Minecraft mc = Minecraft.getInstance();
-        if (!TokiaConfig.get().effectsHud || mc.player == null || mc.gui.hud.isHidden()) {
-            return;
-        }
+    private static List<String> lines(Minecraft mc) {
         List<String> lines = new ArrayList<>();
+        if (mc.player == null) {
+            return lines;
+        }
         for (MobEffectInstance e : mc.player.getActiveEffects()) {
             String name = e.getEffect().value().getDisplayName().getString();
             if (e.getAmplifier() > 0) {
@@ -40,16 +39,40 @@ public final class EffectsHud {
             }
             lines.add(name + " (" + time + ")");
         }
+        return lines;
+    }
+
+    /** Groesse {Breite, Hoehe}; auch fuer den HUD-Editor. */
+    public static int[] size(Minecraft mc) {
+        List<String> lines = lines(mc);
+        if (lines.isEmpty()) {
+            return new int[] {90, 12};
+        }
+        int w = 0;
+        for (String l : lines) {
+            w = Math.max(w, mc.font.width(l));
+        }
+        return new int[] {w + 8, lines.size() * (mc.font.lineHeight + 3)};
+    }
+
+    private static void render(GuiGraphicsExtractor g, net.minecraft.client.DeltaTracker delta) {
+        Minecraft mc = Minecraft.getInstance();
+        TokiaConfig cfg = TokiaConfig.get();
+        if (!cfg.effectsHud || mc.player == null || mc.gui.hud.isHidden()) {
+            return;
+        }
+        List<String> lines = lines(mc);
         if (lines.isEmpty()) {
             return;
         }
+        int[] s = size(mc);
+        int x = HudLayout.x(cfg.effectsX, s[0], g.guiWidth());
+        int y = HudLayout.y(cfg.effectsY, s[1], g.guiHeight());
         int lineH = mc.font.lineHeight + 3;
-        int y = g.guiHeight() - 6 - lines.size() * lineH;
-        for (String l : lines) {
-            int w = mc.font.width(l);
-            g.fill(4, y - 2, 4 + w + 6, y + mc.font.lineHeight + 1, 0x80000000);
-            g.text(mc.font, l, 7, y, 0xFFFFFFFF, true);
-            y += lineH;
+        for (int i = 0; i < lines.size(); i++) {
+            int ly = y + i * lineH;
+            g.fill(x, ly, x + s[0], ly + lineH - 1, 0x80000000);
+            g.text(mc.font, lines.get(i), x + 4, ly + 2, 0xFFFFFFFF, true);
         }
     }
 }
