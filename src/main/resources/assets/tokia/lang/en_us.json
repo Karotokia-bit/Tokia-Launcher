@@ -66,5 +66,19 @@
 	"tokia.module.zoom": "Zoom",
 	"tokia.module.zoom.desc": "Zoom in with a key press",
 	"tokia.module.zoom.text": "Hold the C key (changeable under Controls, category Tokia) to zoom in. A smaller value means more zoom.",
-	"tokia.opt.zoom_fov": "Field of view when zooming"
+	"tokia.opt.zoom_fov": "Field of view when zooming",
+	"tokia.opt.reach": "Reach display",
+	"tokia.opt.combo": "Combo counter",
+	"tokia.module.items": "Item counter",
+	"tokia.module.items.desc": "Golden apples, pearls, potions, arrows",
+	"tokia.item.gapple": "Golden apples",
+	"tokia.item.pearl": "Ender pearls",
+	"tokia.item.pot": "Splash potions",
+	"tokia.item.arrow": "Arrows",
+	"tokia.module.sprint": "Toggle Sprint",
+	"tokia.module.sprint.desc": "Sprint automatically while moving forward",
+	"tokia.module.sprint.text": "You sprint automatically as soon as you walk forward. No need to hold the sprint key.",
+	"tokia.module.fullbright": "Fullbright",
+	"tokia.module.fullbright.desc": "Maximum brightness",
+	"tokia.module.fullbright.text": "Sets brightness to the game's maximum. Your previous value is restored when turned off."
 }

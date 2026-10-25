@@ -66,5 +66,19 @@
 	"tokia.module.zoom": "Zoom",
 	"tokia.module.zoom.desc": "Heranzoomen per Tastendruck",
 	"tokia.module.zoom.text": "Halte die Taste C (änderbar unter Steuerung, Kategorie Tokia), um heranzuzoomen. Ein kleinerer Wert bedeutet mehr Zoom.",
-	"tokia.opt.zoom_fov": "Sichtfeld beim Zoom"
+	"tokia.opt.zoom_fov": "Sichtfeld beim Zoom",
+	"tokia.opt.reach": "Reichweite (Reach)",
+	"tokia.opt.combo": "Combo-Zähler",
+	"tokia.module.items": "Item-Zähler",
+	"tokia.module.items.desc": "Goldäpfel, Perlen, Tränke, Pfeile",
+	"tokia.item.gapple": "Goldäpfel",
+	"tokia.item.pearl": "Enderperlen",
+	"tokia.item.pot": "Wurftränke",
+	"tokia.item.arrow": "Pfeile",
+	"tokia.module.sprint": "Toggle Sprint",
+	"tokia.module.sprint.desc": "Automatisch sprinten beim Vorwärtslaufen",
+	"tokia.module.sprint.text": "Sobald du vorwärts läufst, sprintest du automatisch. Du musst die Sprint-Taste nicht mehr halten.",
+	"tokia.module.fullbright": "Fullbright",
+	"tokia.module.fullbright.desc": "Maximale Helligkeit",
+	"tokia.module.fullbright.text": "Stellt die Helligkeit auf das Spiel-Maximum. Beim Ausschalten wird dein alter Wert wiederhergestellt."
 }
