@@ -62,13 +62,15 @@ public class HudEditorScreen extends Screen {
         }
 
         for (HudModules.Entry e : entries) {
+            if (!e.enabled.getAsBoolean()) {
+                continue;
+            }
             int[] s = e.size.get();
             int x = HudLayout.x(e.getX.getAsDouble(), s[0], this.width);
             int y = HudLayout.y(e.getY.getAsDouble(), s[1], this.height);
-            boolean on = e.enabled.getAsBoolean();
             boolean active = e == dragging || inside(x, y, s[0], s[1]);
-            int fill = on ? (active ? 0x808B5CF6 : 0x408B5CF6) : 0x40808080;
-            int border = on ? ACCENT : 0xFF808080;
+            int fill = active ? 0x808B5CF6 : 0x408B5CF6;
+            int border = ACCENT;
             g.fill(x, y, x + s[0], y + s[1], fill);
             g.fill(x - 1, y - 1, x + s[0] + 1, y, border);
             g.fill(x - 1, y + s[1], x + s[0] + 1, y + s[1] + 1, border);
@@ -88,6 +90,8 @@ public class HudEditorScreen extends Screen {
         resetY = this.height / 2 + 10;
         g.fill(resetX, resetY, resetX + resetW, resetY + 16, inside(resetX, resetY, resetW, 16) ? 0xFF2E2E42 : 0xFF1C1C2B);
         g.text(this.font, resetLabel, resetX + 8, resetY + 4, SUB, false);
+        String hint2 = tr("tokia.editor.hint2");
+        g.text(this.font, hint2, this.width / 2 - this.font.width(hint2) / 2, resetY + 24, SUB, false);
     }
 
     @Override
@@ -99,6 +103,9 @@ public class HudEditorScreen extends Screen {
         }
         for (int i = entries.size() - 1; i >= 0; i--) {
             HudModules.Entry e = entries.get(i);
+            if (!e.enabled.getAsBoolean()) {
+                continue;
+            }
             int[] s = e.size.get();
             int x = HudLayout.x(e.getX.getAsDouble(), s[0], this.width);
             int y = HudLayout.y(e.getY.getAsDouble(), s[1], this.height);

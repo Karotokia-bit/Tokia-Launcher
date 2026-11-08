@@ -3,6 +3,7 @@ package com.tokia.client;
 import com.tokia.TokiaMod;
 import com.tokia.client.config.TokiaConfig;
 import com.tokia.client.gui.TokiaMenuScreen;
+import com.tokia.client.hud.AlertHud;
 import com.tokia.client.hud.ArmorHud;
 import com.tokia.client.hud.CrosshairHud;
 import com.tokia.client.hud.EffectsHud;
@@ -10,6 +11,9 @@ import com.tokia.client.hud.InfoHud;
 import com.tokia.client.hud.KeystrokesHud;
 import com.tokia.client.util.ClickCounter;
 import com.tokia.client.util.PlayerStats;
+import com.tokia.client.util.SprintHelper;
+import com.tokia.client.util.Stopwatch;
+import com.tokia.client.util.Waypoints;
 import com.tokia.client.util.ZoomHandler;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
@@ -27,6 +31,21 @@ public class TokiaClient implements ClientModInitializer {
     private static final KeyMapping ZOOM = KeyMappingHelper.registerKeyMapping(
         new KeyMapping("key.tokia.zoom", SDLScancode.SDL_SCANCODE_C, CATEGORY));
 
+    private static final KeyMapping STOPWATCH_TOGGLE = KeyMappingHelper.registerKeyMapping(
+        new KeyMapping("key.tokia.stopwatch_toggle", SDLScancode.SDL_SCANCODE_V, CATEGORY));
+
+    private static final KeyMapping STOPWATCH_RESET = KeyMappingHelper.registerKeyMapping(
+        new KeyMapping("key.tokia.stopwatch_reset", SDLScancode.SDL_SCANCODE_G, CATEGORY));
+
+    private static final KeyMapping WAYPOINT_ADD = KeyMappingHelper.registerKeyMapping(
+        new KeyMapping("key.tokia.waypoint_add", SDLScancode.SDL_SCANCODE_B, CATEGORY));
+
+    private static final KeyMapping WAYPOINT_NEXT = KeyMappingHelper.registerKeyMapping(
+        new KeyMapping("key.tokia.waypoint_next", SDLScancode.SDL_SCANCODE_N, CATEGORY));
+
+    private static final KeyMapping WAYPOINT_DELETE = KeyMappingHelper.registerKeyMapping(
+        new KeyMapping("key.tokia.waypoint_delete", SDLScancode.SDL_SCANCODE_M, CATEGORY));
+
     @Override
     public void onInitializeClient() {
         TokiaConfig.load();
@@ -36,6 +55,7 @@ public class TokiaClient implements ClientModInitializer {
         KeystrokesHud.register();
         ArmorHud.register();
         EffectsHud.register();
+        AlertHud.register();
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             ClickCounter.tick(client.options.keyAttack.isDown(), client.options.keyUse.isDown());
@@ -45,6 +65,22 @@ public class TokiaClient implements ClientModInitializer {
                 PlayerStats.reset();
             }
             ZoomHandler.tick(client, ZOOM.isDown());
+            SprintHelper.tick(client);
+            while (STOPWATCH_TOGGLE.consumeClick()) {
+                Stopwatch.toggle();
+            }
+            while (STOPWATCH_RESET.consumeClick()) {
+                Stopwatch.reset();
+            }
+            while (WAYPOINT_ADD.consumeClick()) {
+                Waypoints.add(client);
+            }
+            while (WAYPOINT_NEXT.consumeClick()) {
+                Waypoints.next();
+            }
+            while (WAYPOINT_DELETE.consumeClick()) {
+                Waypoints.deleteActive();
+            }
             while (OPEN_MENU.consumeClick()) {
                 client.gui.setScreen(new TokiaMenuScreen(null));
             }

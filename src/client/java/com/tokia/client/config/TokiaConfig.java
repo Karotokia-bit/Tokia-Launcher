@@ -3,14 +3,17 @@ package com.tokia.client.config;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.tokia.TokiaMod;
+import com.tokia.client.util.Chroma;
 import net.fabricmc.loader.api.FabricLoader;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 
 /** Alle Einstellungen von Tokia. Wird als config/tokia.json gespeichert. */
 public final class TokiaConfig {
-    /** Farbpalette fuer das Crosshair (RGB). */
+    /** Farbpalette (RGB). */
     public static final int[] PALETTE = {
         0xFFFFFF, 0xFF5555, 0xFFAA00, 0xFFFF55, 0x55FF55, 0x00AA00, 0x55FFFF, 0x00AAAA,
         0x5555FF, 0xAA55FF, 0xFF55FF, 0xFF8FB1, 0xCCCCCC, 0x888888, 0x444444, 0x000000
@@ -27,48 +30,108 @@ public final class TokiaConfig {
     public int crosshairGap = 3;
     public boolean crosshairOutline = true;
     public boolean crosshairDot = false;
+    public boolean crosshairDynamic = false;
+    public boolean crosshairRainbow = false;
 
-    // Info-HUD
-    public boolean infoEnabled = true;
-    public boolean showFps = true;
-    public boolean showPing = true;
-    public boolean showCoords = true;
-    public boolean showCps = true;
-    public boolean showClock = false;
-    public boolean infoBackground = true;
-    public boolean showDirection = false;
-    public boolean showSpeed = false;
-    public boolean showRam = false;
-    public boolean showSession = false;
+    // Einzelne Info-Anzeigen (jede mit eigener Position und eigenem Stil)
+    public WidgetCfg fps = dyn(new WidgetCfg(true, 0.0, 0.00));
+    public WidgetCfg ping = dyn(new WidgetCfg(true, 0.0, 0.05));
+    public WidgetCfg coords = new WidgetCfg(true, 0.0, 0.10);
+    public WidgetCfg cps = new WidgetCfg(true, 0.0, 0.15);
+    public WidgetCfg frametime = dyn(new WidgetCfg(false, 0.0, 0.20));
+    public WidgetCfg chunk = new WidgetCfg(false, 0.0, 0.25);
+    public WidgetCfg direction = new WidgetCfg(false, 0.0, 0.30);
+    public WidgetCfg angles = new WidgetCfg(false, 0.0, 0.35);
+    public WidgetCfg speed = new WidgetCfg(false, 0.0, 0.40);
+    public WidgetCfg ram = new WidgetCfg(false, 0.0, 0.45);
+    public WidgetCfg handItem = new WidgetCfg(false, 0.0, 0.50);
+    public WidgetCfg clock = new WidgetCfg(false, 0.0, 0.55);
+    public WidgetCfg session = new WidgetCfg(false, 0.0, 0.60);
+    public WidgetCfg stopwatch = new WidgetCfg(false, 0.0, 0.65);
+    public WidgetCfg waypoint = new WidgetCfg(false, 0.0, 0.70);
 
-    // Keystrokes
-    public boolean keystrokes = true;
+    // Keystrokes, Ruestung, Effekte
+    public WidgetCfg keys = new WidgetCfg(true, 0.0, 0.42);
     public boolean keystrokesMouse = true;
     public boolean keystrokesSpace = true;
+    public WidgetCfg armor = new WidgetCfg(true, 1.0, 0.35);
+    public WidgetCfg effects = new WidgetCfg(true, 0.0, 1.0);
 
-    // Weitere Module
-    public boolean armorHud = true;
-    public boolean effectsHud = true;
+    // Extras: Auto-Sprint und Warnungen
+    public boolean autoSprint = false;
+    public boolean warnArmor = true;
+    public boolean warnTool = true;
+    public int warnPercent = 10;
+
+    // Waypoints
+    public List<Waypoint> waypoints = new ArrayList<>();
+    public int activeWaypoint = 0;
 
     // Zoom (Sichtfeld beim Zoomen, 30 = staerkster Zoom)
     public boolean zoomEnabled = true;
     public int zoomFov = 30;
 
-    // HUD-Positionen (0 = linker/oberer Rand, 1 = rechter/unterer Rand)
-    public double infoX = 0.0;
-    public double infoY = 0.0;
-    public double keysX = 0.0;
-    public double keysY = 0.35;
-    public double armorX = 1.0;
-    public double armorY = 0.35;
-    public double effectsX = 0.0;
-    public double effectsY = 1.0;
+    /** Ein gespeicherter Waypoint. */
+    public static final class Waypoint {
+        public String name = "";
+        public double x;
+        public double y;
+        public double z;
+
+        public Waypoint() {
+        }
+
+        public Waypoint(String name, double x, double y, double z) {
+            this.name = name;
+            this.x = x;
+            this.y = y;
+            this.z = z;
+        }
+    }
+
+    private static WidgetCfg dyn(WidgetCfg w) {
+        w.dynamicColor = true;
+        return w;
+    }
 
     /** Crosshair-Farbe als ARGB inklusive Deckkraft. */
     public int color() {
         int pct = Math.max(0, Math.min(100, crosshairOpacity));
         int alpha = Math.round(pct * 2.55f);
-        return (alpha << 24) | (crosshairRgb & 0xFFFFFF);
+        int rgb = crosshairRainbow ? Chroma.rgb() : (crosshairRgb & 0xFFFFFF);
+        return (alpha << 24) | rgb;
+    }
+
+    // ---- Listen ----
+    public List<WidgetCfg> infoWidgets() {
+        return List.of(fps, ping, coords, cps, frametime, chunk, direction, angles, speed, ram, handItem, clock, session,
+            stopwatch, waypoint);
+    }
+
+    public List<WidgetCfg> allWidgets() {
+        List<WidgetCfg> all = new ArrayList<>(infoWidgets());
+        all.add(keys);
+        all.add(armor);
+        all.add(effects);
+        return all;
+    }
+
+    public boolean anyInfoEnabled() {
+        for (WidgetCfg w : infoWidgets()) {
+            if (w.enabled) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Schaltet alle Info-Anzeigen aus oder auf ihre Standardauswahl ein. */
+    public void setInfoEnabled(boolean on) {
+        List<WidgetCfg> mine = infoWidgets();
+        List<WidgetCfg> defaults = new TokiaConfig().infoWidgets();
+        for (int i = 0; i < mine.size(); i++) {
+            mine.get(i).enabled = on && defaults.get(i).enabled;
+        }
     }
 
     // ---- Zuruecksetzen pro Modul ----
@@ -83,36 +146,49 @@ public final class TokiaConfig {
         crosshairGap = d.crosshairGap;
         crosshairOutline = d.crosshairOutline;
         crosshairDot = d.crosshairDot;
+        crosshairDynamic = d.crosshairDynamic;
+        crosshairRainbow = d.crosshairRainbow;
     }
 
-    public void resetInfo() {
-        TokiaConfig d = new TokiaConfig();
-        infoEnabled = d.infoEnabled;
-        showFps = d.showFps;
-        showPing = d.showPing;
-        showCoords = d.showCoords;
-        showCps = d.showCps;
-        showClock = d.showClock;
-        infoBackground = d.infoBackground;
-        showDirection = d.showDirection;
-        showSpeed = d.showSpeed;
-        showRam = d.showRam;
-        showSession = d.showSession;
+    public void resetInfoAll() {
+        List<WidgetCfg> mine = infoWidgets();
+        List<WidgetCfg> defaults = new TokiaConfig().infoWidgets();
+        for (int i = 0; i < mine.size(); i++) {
+            mine.get(i).resetStyle();
+            mine.get(i).dynamicColor = defaults.get(i).dynamicColor;
+            mine.get(i).enabled = defaults.get(i).enabled;
+        }
     }
 
     public void resetKeystrokes() {
         TokiaConfig d = new TokiaConfig();
-        keystrokes = d.keystrokes;
+        keys.resetStyle();
+        keys.enabled = d.keys.enabled;
         keystrokesMouse = d.keystrokesMouse;
         keystrokesSpace = d.keystrokesSpace;
     }
 
     public void resetArmor() {
-        armorHud = new TokiaConfig().armorHud;
+        armor.resetStyle();
+        armor.enabled = new TokiaConfig().armor.enabled;
     }
 
     public void resetEffects() {
-        effectsHud = new TokiaConfig().effectsHud;
+        effects.resetStyle();
+        effects.enabled = new TokiaConfig().effects.enabled;
+    }
+
+    public void resetExtras() {
+        TokiaConfig d = new TokiaConfig();
+        autoSprint = d.autoSprint;
+        warnArmor = d.warnArmor;
+        warnTool = d.warnTool;
+        warnPercent = d.warnPercent;
+    }
+
+    public void clearWaypoints() {
+        waypoints.clear();
+        activeWaypoint = 0;
     }
 
     public void resetZoom() {
@@ -122,15 +198,12 @@ public final class TokiaConfig {
     }
 
     public void resetPositions() {
-        TokiaConfig d = new TokiaConfig();
-        infoX = d.infoX;
-        infoY = d.infoY;
-        keysX = d.keysX;
-        keysY = d.keysY;
-        armorX = d.armorX;
-        armorY = d.armorY;
-        effectsX = d.effectsX;
-        effectsY = d.effectsY;
+        List<WidgetCfg> mine = allWidgets();
+        List<WidgetCfg> defaults = new TokiaConfig().allWidgets();
+        for (int i = 0; i < mine.size(); i++) {
+            mine.get(i).x = defaults.get(i).x;
+            mine.get(i).y = defaults.get(i).y;
+        }
     }
 
     // ---- Laden / Speichern ----

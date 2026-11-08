@@ -1,7 +1,9 @@
 package com.tokia.client.gui;
 
 import com.tokia.client.config.TokiaConfig;
+import com.tokia.client.config.WidgetCfg;
 import com.tokia.client.hud.CrosshairHud;
+import com.tokia.client.hud.InfoHud;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.MouseButtonEvent;
@@ -68,11 +70,15 @@ public class TokiaMenuScreen extends Screen {
         shape.add(new SliderRow(tr("tokia.opt.size"), () -> c.crosshairSize, v -> c.crosshairSize = v, 1, 20, "", 0));
         shape.add(new SliderRow(tr("tokia.opt.thickness"), () -> c.crosshairThickness, v -> c.crosshairThickness = v, 1, 6, "", 0));
         shape.add(new SliderRow(tr("tokia.opt.gap"), () -> c.crosshairGap, v -> c.crosshairGap = v, 0, 12, "", 0));
-        shape.add(new SwitchRow(tr("tokia.opt.outline"), () -> c.crosshairOutline, v -> c.crosshairOutline = v));
-        shape.add(new SwitchRow(tr("tokia.opt.dot"), () -> c.crosshairDot, v -> c.crosshairDot = v));
+        List<Row> crossExtra = new ArrayList<>();
+        crossExtra.add(new SwitchRow(tr("tokia.opt.outline"), () -> c.crosshairOutline, v -> c.crosshairOutline = v));
+        crossExtra.add(new SwitchRow(tr("tokia.opt.dot"), () -> c.crosshairDot, v -> c.crosshairDot = v));
+        crossExtra.add(new SwitchRow(tr("tokia.opt.dynamic"), () -> c.crosshairDynamic, v -> c.crosshairDynamic = v));
+        crossExtra.add(new TextRow(tr("tokia.opt.dynamic.text")));
 
         // Crosshair: Seite "Farbe"
         List<Row> color = new ArrayList<>();
+        color.add(new SwitchRow(tr("tokia.opt.rainbow"), () -> c.crosshairRainbow, v -> c.crosshairRainbow = v));
         color.add(new SwatchRow(() -> c.crosshairRgb, v -> c.crosshairRgb = v));
         color.add(new SliderRow(tr("tokia.opt.red"), () -> (c.crosshairRgb >> 16) & 0xFF,
             v -> c.crosshairRgb = (c.crosshairRgb & 0x00FFFF) | (v << 16), 0, 255, "", 0xFFFF5555));
@@ -85,56 +91,54 @@ public class TokiaMenuScreen extends Screen {
         List<Page> crosshairPages = new ArrayList<>();
         crosshairPages.add(new Page(tr("tokia.page.shape"), shape));
         crosshairPages.add(new Page(tr("tokia.page.color"), color));
+        crosshairPages.add(new Page(tr("tokia.page.extras"), crossExtra));
         modules.add(new Module(tr("tokia.module.crosshair"), tr("tokia.module.crosshair.desc"),
             () -> c.crosshairEnabled, v -> c.crosshairEnabled = v, c::resetCrosshair, true, crosshairPages));
 
-        // Info-HUD
-        List<Row> info = new ArrayList<>();
-        info.add(new SwitchRow(tr("tokia.opt.enabled"), () -> c.infoEnabled, v -> c.infoEnabled = v));
-        info.add(new SwitchRow(tr("tokia.opt.fps"), () -> c.showFps, v -> c.showFps = v));
-        info.add(new SwitchRow(tr("tokia.opt.ping"), () -> c.showPing, v -> c.showPing = v));
-        info.add(new SwitchRow(tr("tokia.opt.coords"), () -> c.showCoords, v -> c.showCoords = v));
-        info.add(new SwitchRow(tr("tokia.opt.cps"), () -> c.showCps, v -> c.showCps = v));
-        info.add(new SwitchRow(tr("tokia.opt.clock"), () -> c.showClock, v -> c.showClock = v));
-        info.add(new SwitchRow(tr("tokia.opt.background"), () -> c.infoBackground, v -> c.infoBackground = v));
-        List<Row> extras = new ArrayList<>();
-        extras.add(new SwitchRow(tr("tokia.opt.direction"), () -> c.showDirection, v -> c.showDirection = v));
-        extras.add(new SwitchRow(tr("tokia.opt.speed"), () -> c.showSpeed, v -> c.showSpeed = v));
-        extras.add(new SwitchRow(tr("tokia.opt.ram"), () -> c.showRam, v -> c.showRam = v));
-        extras.add(new SwitchRow(tr("tokia.opt.session"), () -> c.showSession, v -> c.showSession = v));
-        List<Page> infoPages = new ArrayList<>();
-        infoPages.add(new Page(tr("tokia.page.display"), info));
-        infoPages.add(new Page(tr("tokia.page.extras"), extras));
-        modules.add(new Module(tr("tokia.module.info"), tr("tokia.module.info.desc"),
-            () -> c.infoEnabled, v -> c.infoEnabled = v, c::resetInfo, false, infoPages));
+        // Anzeigen: jede Info-Anzeige einzeln einstellbar
+        List<Row> widgetRows = new ArrayList<>();
+        widgetRows.add(new WidgetTilesRow());
+        List<Page> widgetPages = new ArrayList<>();
+        widgetPages.add(new Page("", widgetRows));
+        modules.add(new Module(tr("tokia.module.widgets"), tr("tokia.module.widgets.desc"),
+            c::anyInfoEnabled, c::setInfoEnabled, c::resetInfoAll, false, widgetPages));
 
         // Keystrokes
-        List<Row> keys = new ArrayList<>();
-        keys.add(new SwitchRow(tr("tokia.opt.enabled"), () -> c.keystrokes, v -> c.keystrokes = v));
-        keys.add(new SwitchRow(tr("tokia.opt.keys_mouse"), () -> c.keystrokesMouse, v -> c.keystrokesMouse = v));
-        keys.add(new SwitchRow(tr("tokia.opt.keys_space"), () -> c.keystrokesSpace, v -> c.keystrokesSpace = v));
+        List<Row> keysGeneral = new ArrayList<>();
+        keysGeneral.add(new SwitchRow(tr("tokia.opt.enabled"), () -> c.keys.enabled, v -> c.keys.enabled = v));
+        keysGeneral.add(new SwitchRow(tr("tokia.opt.keys_mouse"), () -> c.keystrokesMouse, v -> c.keystrokesMouse = v));
+        keysGeneral.add(new SwitchRow(tr("tokia.opt.keys_space"), () -> c.keystrokesSpace, v -> c.keystrokesSpace = v));
+        List<Row> keysStyle = new ArrayList<>();
+        keysStyle.add(new StyleEditorRow(c.keys, false, false, false, false));
         List<Page> keyPages = new ArrayList<>();
-        keyPages.add(new Page("", keys));
+        keyPages.add(new Page(tr("tokia.page.general"), keysGeneral));
+        keyPages.add(new Page(tr("tokia.page.style"), keysStyle));
         modules.add(new Module(tr("tokia.module.keystrokes"), tr("tokia.module.keystrokes.desc"),
-            () -> c.keystrokes, v -> c.keystrokes = v, c::resetKeystrokes, false, keyPages));
+            () -> c.keys.enabled, v -> c.keys.enabled = v, c::resetKeystrokes, false, keyPages));
 
         // Ruestung
-        List<Row> armor = new ArrayList<>();
-        armor.add(new SwitchRow(tr("tokia.opt.enabled"), () -> c.armorHud, v -> c.armorHud = v));
-        armor.add(new TextRow(tr("tokia.module.armor.text")));
+        List<Row> armorGeneral = new ArrayList<>();
+        armorGeneral.add(new SwitchRow(tr("tokia.opt.enabled"), () -> c.armor.enabled, v -> c.armor.enabled = v));
+        armorGeneral.add(new TextRow(tr("tokia.module.armor.text")));
+        List<Row> armorStyle = new ArrayList<>();
+        armorStyle.add(new StyleEditorRow(c.armor, false, false, true, false));
         List<Page> armorPages = new ArrayList<>();
-        armorPages.add(new Page("", armor));
+        armorPages.add(new Page(tr("tokia.page.general"), armorGeneral));
+        armorPages.add(new Page(tr("tokia.page.style"), armorStyle));
         modules.add(new Module(tr("tokia.module.armor"), tr("tokia.module.armor.desc"),
-            () -> c.armorHud, v -> c.armorHud = v, c::resetArmor, false, armorPages));
+            () -> c.armor.enabled, v -> c.armor.enabled = v, c::resetArmor, false, armorPages));
 
         // Effekte
-        List<Row> effects = new ArrayList<>();
-        effects.add(new SwitchRow(tr("tokia.opt.enabled"), () -> c.effectsHud, v -> c.effectsHud = v));
-        effects.add(new TextRow(tr("tokia.module.effects.text")));
+        List<Row> effectGeneral = new ArrayList<>();
+        effectGeneral.add(new SwitchRow(tr("tokia.opt.enabled"), () -> c.effects.enabled, v -> c.effects.enabled = v));
+        effectGeneral.add(new TextRow(tr("tokia.module.effects.text")));
+        List<Row> effectStyle = new ArrayList<>();
+        effectStyle.add(new StyleEditorRow(c.effects, false, false, true, false));
         List<Page> effectPages = new ArrayList<>();
-        effectPages.add(new Page("", effects));
+        effectPages.add(new Page(tr("tokia.page.general"), effectGeneral));
+        effectPages.add(new Page(tr("tokia.page.style"), effectStyle));
         modules.add(new Module(tr("tokia.module.effects"), tr("tokia.module.effects.desc"),
-            () -> c.effectsHud, v -> c.effectsHud = v, c::resetEffects, false, effectPages));
+            () -> c.effects.enabled, v -> c.effects.enabled = v, c::resetEffects, false, effectPages));
 
         // Zoom
         List<Row> zoom = new ArrayList<>();
@@ -145,6 +149,28 @@ public class TokiaMenuScreen extends Screen {
         zoomPages.add(new Page("", zoom));
         modules.add(new Module(tr("tokia.module.zoom"), tr("tokia.module.zoom.desc"),
             () -> c.zoomEnabled, v -> c.zoomEnabled = v, c::resetZoom, false, zoomPages));
+
+        // Extras: Bewegung, Warnungen, Werkzeuge
+        List<Row> move = new ArrayList<>();
+        move.add(new SwitchRow(tr("tokia.opt.auto_sprint"), () -> c.autoSprint, v -> c.autoSprint = v));
+        move.add(new TextRow(tr("tokia.module.extras.sprint.text")));
+        List<Row> warn = new ArrayList<>();
+        warn.add(new SwitchRow(tr("tokia.opt.warn_armor"), () -> c.warnArmor, v -> c.warnArmor = v));
+        warn.add(new SwitchRow(tr("tokia.opt.warn_tool"), () -> c.warnTool, v -> c.warnTool = v));
+        warn.add(new SliderRow(tr("tokia.opt.warn_percent"), () -> c.warnPercent, v -> c.warnPercent = v, 5, 50, "%", 0));
+        List<Row> tools = new ArrayList<>();
+        tools.add(new TextRow(tr("tokia.module.extras.tools.text")));
+        tools.add(new ButtonRow(tr("tokia.menu.clear_waypoints"), c::clearWaypoints));
+        List<Page> extraPages = new ArrayList<>();
+        extraPages.add(new Page(tr("tokia.page.movement"), move));
+        extraPages.add(new Page(tr("tokia.page.warnings"), warn));
+        extraPages.add(new Page(tr("tokia.page.tools"), tools));
+        modules.add(new Module(tr("tokia.module.extras"), tr("tokia.module.extras.desc"),
+            () -> c.autoSprint || c.warnArmor || c.warnTool, v -> {
+                c.autoSprint = v;
+                c.warnArmor = v;
+                c.warnTool = v;
+            }, c::resetExtras, false, extraPages));
     }
 
     // ------------------------------------------------------------------ Zeichnen
@@ -178,16 +204,16 @@ public class TokiaMenuScreen extends Screen {
         for (int i = 0; i < modules.size(); i++) {
             final Module m = modules.get(i);
             final int idx = i;
-            int iy = py + 44 + i * 24;
+            int iy = py + 44 + i * 22;
             boolean sel = i == selectedModule;
             if (sel) {
-                g.fill(px + 4, iy, px + SIDE_W - 4, iy + 22, 0xFF1E1A33);
-                g.fill(px + 4, iy, px + 6, iy + 22, ACCENT);
-            } else if (inside(px + 4, iy, SIDE_W - 8, 22)) {
-                g.fill(px + 4, iy, px + SIDE_W - 4, iy + 22, HOVER);
+                g.fill(px + 4, iy, px + SIDE_W - 4, iy + 20, 0xFF1E1A33);
+                g.fill(px + 4, iy, px + 6, iy + 20, ACCENT);
+            } else if (inside(px + 4, iy, SIDE_W - 8, 20)) {
+                g.fill(px + 4, iy, px + SIDE_W - 4, iy + 20, HOVER);
             }
             g.text(this.font, m.name, px + 14, iy + 7, sel ? TEXT : SUB, false);
-            hit(px + 4, iy, SIDE_W - 8, 22, () -> {
+            hit(px + 4, iy, SIDE_W - 8, 20, () -> {
                 selectedModule = idx;
                 selectedPage = 0;
             });
@@ -196,7 +222,7 @@ public class TokiaMenuScreen extends Screen {
             hit(px + SIDE_W - 20, iy + 4, 14, 14, () -> m.setEnabled.accept(!m.enabled.getAsBoolean()));
         }
         int ebx = px + 8;
-        int eby = py + ph - 40;
+        int eby = py + ph - 36;
         int ebw = SIDE_W - 16;
         String editLabel = tr("tokia.menu.edit_hud");
         g.fill(ebx, eby, ebx + ebw, eby + 16, inside(ebx, eby, ebw, 16) ? 0xFF2E2E42 : 0xFF1C1C2B);
@@ -518,6 +544,132 @@ public class TokiaMenuScreen extends Screen {
                 hit(sx, sy, size, size, () -> set.accept(rgb));
             }
             return 42;
+        }
+    }
+
+    /** Zwei Spalten: links Schalter und Deckkraft, rechts Farbwahl (Palette + RGB). */
+    private final class StyleEditorRow extends Row {
+        final List<Row> left = new ArrayList<>();
+        final List<Row> right = new ArrayList<>();
+
+        StyleEditorRow(WidgetCfg cfg, boolean enabledRow, boolean labelRow, boolean shadowRow, boolean dynamicRow) {
+            if (enabledRow) {
+                left.add(new SwitchRow(tr("tokia.opt.enabled"), () -> cfg.enabled, v -> cfg.enabled = v));
+            }
+            if (labelRow) {
+                left.add(new SwitchRow(tr("tokia.opt.label"), () -> cfg.label, v -> cfg.label = v));
+            }
+            left.add(new SwitchRow(tr("tokia.opt.background"), () -> cfg.background, v -> cfg.background = v));
+            left.add(new SliderRow(tr("tokia.opt.opacity"), () -> cfg.bgOpacity, v -> cfg.bgOpacity = v, 0, 100, "%", 0));
+            if (shadowRow) {
+                left.add(new SwitchRow(tr("tokia.opt.shadow"), () -> cfg.shadow, v -> cfg.shadow = v));
+            }
+            if (dynamicRow) {
+                left.add(new SwitchRow(tr("tokia.opt.dynamic_color"), () -> cfg.dynamicColor, v -> cfg.dynamicColor = v));
+            }
+            right.add(new SwitchRow(tr("tokia.opt.rainbow"), () -> cfg.rainbow, v -> cfg.rainbow = v));
+            right.add(new SwatchRow(() -> cfg.color, v -> cfg.color = v));
+            right.add(new SliderRow(tr("tokia.opt.red"), () -> (cfg.color >> 16) & 0xFF,
+                v -> cfg.color = (cfg.color & 0x00FFFF) | (v << 16), 0, 255, "", 0xFFFF5555));
+            right.add(new SliderRow(tr("tokia.opt.green"), () -> (cfg.color >> 8) & 0xFF,
+                v -> cfg.color = (cfg.color & 0xFF00FF) | (v << 8), 0, 255, "", 0xFF55FF55));
+            right.add(new SliderRow(tr("tokia.opt.blue"), () -> cfg.color & 0xFF,
+                v -> cfg.color = (cfg.color & 0xFFFF00) | v, 0, 255, "", 0xFF5577FF));
+        }
+
+        @Override
+        int render(GuiGraphicsExtractor g, int x, int y, int w) {
+            int lw = (w - 10) * 46 / 100;
+            int rw = w - 10 - lw;
+            int lh = 0;
+            for (Row r : left) {
+                lh += r.render(g, x, y + lh, lw);
+            }
+            int rh = 0;
+            for (Row r : right) {
+                rh += r.render(g, x + lw + 10, y + rh, rw);
+            }
+            return Math.max(lh, rh);
+        }
+    }
+
+    /** Kacheln aller Info-Anzeigen. Ein Klick auf "Stil" oeffnet die Einstellungen der einzelnen Anzeige. */
+    private final class WidgetTilesRow extends Row {
+        int selected = -1;
+        final List<StyleEditorRow> editors = new ArrayList<>();
+
+        WidgetTilesRow() {
+            TokiaConfig c = TokiaConfig.get();
+            for (InfoHud.Def d : InfoHud.DEFS) {
+                editors.add(new StyleEditorRow(d.cfg.apply(c), true, true, true, d.supportsDynamicColor()));
+            }
+        }
+
+        @Override
+        int render(GuiGraphicsExtractor g, int x, int y, int w) {
+            return selected < 0 ? tiles(g, x, y, w) : detail(g, x, y, w);
+        }
+
+        private int tiles(GuiGraphicsExtractor g, int x, int y, int w) {
+            TokiaConfig cfg = TokiaConfig.get();
+            int tileW = (w - 6) / 2;
+            int n = InfoHud.DEFS.size();
+            String editLabel = tr("tokia.menu.edit");
+            int ew = font.width(editLabel) + 10;
+            for (int i = 0; i < n; i++) {
+                final int idx = i;
+                InfoHud.Def d = InfoHud.DEFS.get(i);
+                WidgetCfg c = d.cfg.apply(cfg);
+                int tx = x + (i % 2) * (tileW + 6);
+                int ty = y + (i / 2) * 24;
+                g.fill(tx, ty, tx + tileW, ty + 22, inside(tx, ty, tileW, 22) ? 0xFF22222F : 0xFF181824);
+                boolean on = c.enabled;
+                g.fill(tx + 6, ty + 7, tx + 24, ty + 15, on ? ACCENT : OFF);
+                int kx = on ? tx + 16 : tx + 8;
+                g.fill(kx, ty + 8, kx + 6, ty + 14, 0xFFFFFFFF);
+                g.text(font, tr(d.nameKey), tx + 30, ty + 7, on ? TEXT : SUB, false);
+                hit(tx, ty, tileW, 22, () -> c.enabled = !c.enabled);
+                int ex = tx + tileW - ew - 4;
+                g.fill(ex, ty + 4, ex + ew, ty + 18, inside(ex, ty + 4, ew, 14) ? 0xFF2E2E42 : 0xFF232336);
+                g.text(font, editLabel, ex + 5, ty + 7, SUB, false);
+                hit(ex, ty + 4, ew, 14, () -> selected = idx);
+            }
+            return ((n + 1) / 2) * 24;
+        }
+
+        private int detail(GuiGraphicsExtractor g, int x, int y, int w) {
+            InfoHud.Def d = InfoHud.DEFS.get(selected);
+            WidgetCfg c = d.cfg.apply(TokiaConfig.get());
+            String back = "< " + tr("tokia.menu.back");
+            int bw = font.width(back) + 12;
+            g.fill(x, y, x + bw, y + 14, inside(x, y, bw, 14) ? 0xFF2E2E42 : 0xFF1C1C2B);
+            g.text(font, back, x + 6, y + 3, SUB, false);
+            hit(x, y, bw, 14, () -> selected = -1);
+            g.text(font, tr(d.nameKey), x + bw + 8, y + 3, TEXT, true);
+
+            int py2 = y + 20;
+            g.fill(x, py2, x + w, py2 + 24, 0xFF3A4A5A);
+            InfoHud.drawBox(g, minecraft, c, InfoHud.text(d, minecraft, c), InfoHud.colorFor(d, minecraft, c), x + 8, py2 + 5);
+            return 50 + editors.get(selected).render(g, x, y + 50, w);
+        }
+    }
+
+    private final class ButtonRow extends Row {
+        final String label;
+        final Runnable action;
+
+        ButtonRow(String label, Runnable action) {
+            this.label = label;
+            this.action = action;
+        }
+
+        @Override
+        int render(GuiGraphicsExtractor g, int x, int y, int w) {
+            int bw = font.width(label) + 16;
+            g.fill(x + 6, y + 3, x + 6 + bw, y + 19, inside(x + 6, y + 3, bw, 16) ? 0xFF2E2E42 : 0xFF1C1C2B);
+            g.text(font, label, x + 14, y + 7, TEXT, false);
+            hit(x + 6, y + 3, bw, 16, action);
+            return 22;
         }
     }
 

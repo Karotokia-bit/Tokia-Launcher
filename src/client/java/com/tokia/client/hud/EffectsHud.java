@@ -2,6 +2,7 @@ package com.tokia.client.hud;
 
 import com.tokia.TokiaMod;
 import com.tokia.client.config.TokiaConfig;
+import com.tokia.client.config.WidgetCfg;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -57,8 +58,8 @@ public final class EffectsHud {
 
     private static void render(GuiGraphicsExtractor g, net.minecraft.client.DeltaTracker delta) {
         Minecraft mc = Minecraft.getInstance();
-        TokiaConfig cfg = TokiaConfig.get();
-        if (!cfg.effectsHud || mc.player == null || mc.gui.hud.isHidden()) {
+        WidgetCfg c = TokiaConfig.get().effects;
+        if (!c.enabled || mc.player == null || mc.gui.hud.isHidden()) {
             return;
         }
         List<String> lines = lines(mc);
@@ -66,13 +67,15 @@ public final class EffectsHud {
             return;
         }
         int[] s = size(mc);
-        int x = HudLayout.x(cfg.effectsX, s[0], g.guiWidth());
-        int y = HudLayout.y(cfg.effectsY, s[1], g.guiHeight());
+        int x = HudLayout.x(c.x, s[0], g.guiWidth());
+        int y = HudLayout.y(c.y, s[1], g.guiHeight());
         int lineH = mc.font.lineHeight + 3;
         for (int i = 0; i < lines.size(); i++) {
             int ly = y + i * lineH;
-            g.fill(x, ly, x + s[0], ly + lineH - 1, 0x80000000);
-            g.text(mc.font, lines.get(i), x + 4, ly + 2, 0xFFFFFFFF, true);
+            if (c.background) {
+                g.fill(x, ly, x + s[0], ly + lineH - 1, c.bgColor());
+            }
+            g.text(mc.font, lines.get(i), x + 4, ly + 2, c.textColor(), c.shadow);
         }
     }
 }
