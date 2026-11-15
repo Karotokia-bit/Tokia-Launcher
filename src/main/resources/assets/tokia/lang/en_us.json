@@ -129,5 +129,9 @@
 	"tokia.opt.rainbow": "Rainbow",
 	"tokia.opt.dynamic": "Dynamic",
 	"tokia.opt.dynamic.text": "The crosshair grows the faster you move.",
-	"tokia.opt.dynamic_color": "Color by value"
+	"tokia.opt.dynamic_color": "Color by value",
+  "tokia.module.design": "Appearance",
+  "tokia.module.design.desc": "Customize the menu color and shape",
+  "tokia.design.accent_hint": "Choose an accent color and adjust the corner radius live.",
+  "tokia.design.rounding": "Corner radius"
 }

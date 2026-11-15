@@ -129,5 +129,9 @@
 	"tokia.opt.rainbow": "Regenbogen",
 	"tokia.opt.dynamic": "Dynamisch",
 	"tokia.opt.dynamic.text": "Das Crosshair wird größer, je schneller du läuft.",
-	"tokia.opt.dynamic_color": "Farbe nach Wert"
+	"tokia.opt.dynamic_color": "Farbe nach Wert",
+  "tokia.module.design": "Design",
+  "tokia.module.design.desc": "Farbe und Form des Menues anpassen",
+  "tokia.design.accent_hint": "Wähle eine Akzentfarbe und stelle die Rundung live ein.",
+  "tokia.design.rounding": "Eckenrundung"
 }

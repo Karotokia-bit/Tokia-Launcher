@@ -71,6 +71,10 @@ public final class TokiaConfig {
     public boolean zoomEnabled = true;
     public int zoomFov = 30;
 
+    // Tokia-Menue: frei konfigurierbare Akzentfarbe und globale Rundung (0 = eckig, 12 = maximal rund).
+    public int menuAccentRgb = 0x8B5CF6;
+    public int menuRounding = 9;
+
     /** Ein gespeicherter Waypoint. */
     public static final class Waypoint {
         public String name = "";
@@ -225,8 +229,14 @@ public final class TokiaConfig {
             return;
         }
         try {
-            TokiaConfig loaded = GSON.fromJson(Files.readString(p), TokiaConfig.class);
+            String json = Files.readString(p);
+            TokiaConfig loaded = GSON.fromJson(json, TokiaConfig.class);
             if (loaded != null) {
+                // Neue Menueoptionen fuer vorhandene Configs ergaenzen.
+                if (!json.contains("\"menuAccentRgb\"")) loaded.menuAccentRgb = 0x8B5CF6;
+                if (!json.contains("\"menuRounding\"")) loaded.menuRounding = 9;
+                loaded.menuRounding = Math.max(0, Math.min(12, loaded.menuRounding));
+                loaded.menuAccentRgb &= 0xFFFFFF;
                 instance = loaded;
             }
         } catch (Exception e) {
