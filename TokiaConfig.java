@@ -3,6 +3,7 @@ package com.tokia.client.config;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.tokia.TokiaMod;
+import com.tokia.client.util.Chroma;
 import net.fabricmc.loader.api.FabricLoader;
 
 import java.nio.file.Files;
@@ -29,13 +30,15 @@ public final class TokiaConfig {
     public int crosshairGap = 3;
     public boolean crosshairOutline = true;
     public boolean crosshairDot = false;
+    public boolean crosshairDynamic = false;
+    public boolean crosshairRainbow = false;
 
     // Einzelne Info-Anzeigen (jede mit eigener Position und eigenem Stil)
-    public WidgetCfg fps = new WidgetCfg(true, 0.0, 0.00);
-    public WidgetCfg ping = new WidgetCfg(true, 0.0, 0.05);
+    public WidgetCfg fps = dyn(new WidgetCfg(true, 0.0, 0.00));
+    public WidgetCfg ping = dyn(new WidgetCfg(true, 0.0, 0.05));
     public WidgetCfg coords = new WidgetCfg(true, 0.0, 0.10);
     public WidgetCfg cps = new WidgetCfg(true, 0.0, 0.15);
-    public WidgetCfg frametime = new WidgetCfg(false, 0.0, 0.20);
+    public WidgetCfg frametime = dyn(new WidgetCfg(false, 0.0, 0.20));
     public WidgetCfg chunk = new WidgetCfg(false, 0.0, 0.25);
     public WidgetCfg direction = new WidgetCfg(false, 0.0, 0.30);
     public WidgetCfg angles = new WidgetCfg(false, 0.0, 0.35);
@@ -44,6 +47,8 @@ public final class TokiaConfig {
     public WidgetCfg handItem = new WidgetCfg(false, 0.0, 0.50);
     public WidgetCfg clock = new WidgetCfg(false, 0.0, 0.55);
     public WidgetCfg session = new WidgetCfg(false, 0.0, 0.60);
+    public WidgetCfg stopwatch = new WidgetCfg(false, 0.0, 0.65);
+    public WidgetCfg waypoint = new WidgetCfg(false, 0.0, 0.70);
 
     // Keystrokes, Ruestung, Effekte
     public WidgetCfg keys = new WidgetCfg(true, 0.0, 0.42);
@@ -52,20 +57,59 @@ public final class TokiaConfig {
     public WidgetCfg armor = new WidgetCfg(true, 1.0, 0.35);
     public WidgetCfg effects = new WidgetCfg(true, 0.0, 1.0);
 
+    // Extras: Auto-Sprint und Warnungen
+    public boolean autoSprint = false;
+    public boolean warnArmor = true;
+    public boolean warnTool = true;
+    public int warnPercent = 10;
+
+    // Waypoints
+    public List<Waypoint> waypoints = new ArrayList<>();
+    public int activeWaypoint = 0;
+
     // Zoom (Sichtfeld beim Zoomen, 30 = staerkster Zoom)
     public boolean zoomEnabled = true;
     public int zoomFov = 30;
+
+    // Tokia-Menue: frei konfigurierbare Akzentfarbe und globale Rundung (0 = eckig, 12 = maximal rund).
+    public int menuAccentRgb = 0x8B5CF6;
+    public int menuRounding = 9;
+
+    /** Ein gespeicherter Waypoint. */
+    public static final class Waypoint {
+        public String name = "";
+        public double x;
+        public double y;
+        public double z;
+
+        public Waypoint() {
+        }
+
+        public Waypoint(String name, double x, double y, double z) {
+            this.name = name;
+            this.x = x;
+            this.y = y;
+            this.z = z;
+        }
+    }
+
+    private static WidgetCfg dyn(WidgetCfg w) {
+        w.dynamicColor = true;
+        return w;
+    }
 
     /** Crosshair-Farbe als ARGB inklusive Deckkraft. */
     public int color() {
         int pct = Math.max(0, Math.min(100, crosshairOpacity));
         int alpha = Math.round(pct * 2.55f);
-        return (alpha << 24) | (crosshairRgb & 0xFFFFFF);
+        int rgb = crosshairRainbow ? Chroma.rgb() : (crosshairRgb & 0xFFFFFF);
+        return (alpha << 24) | rgb;
     }
 
     // ---- Listen ----
     public List<WidgetCfg> infoWidgets() {
-        return List.of(fps, ping, coords, cps, frametime, chunk, direction, angles, speed, ram, handItem, clock, session);
+        return List.of(fps, ping, coords, cps, frametime, chunk, direction, angles, speed, ram, handItem, clock, session,
+            stopwatch, waypoint);
     }
 
     public List<WidgetCfg> allWidgets() {
@@ -106,6 +150,8 @@ public final class TokiaConfig {
         crosshairGap = d.crosshairGap;
         crosshairOutline = d.crosshairOutline;
         crosshairDot = d.crosshairDot;
+        crosshairDynamic = d.crosshairDynamic;
+        crosshairRainbow = d.crosshairRainbow;
     }
 
     public void resetInfoAll() {
@@ -113,6 +159,7 @@ public final class TokiaConfig {
         List<WidgetCfg> defaults = new TokiaConfig().infoWidgets();
         for (int i = 0; i < mine.size(); i++) {
             mine.get(i).resetStyle();
+            mine.get(i).dynamicColor = defaults.get(i).dynamicColor;
             mine.get(i).enabled = defaults.get(i).enabled;
         }
     }
@@ -133,6 +180,19 @@ public final class TokiaConfig {
     public void resetEffects() {
         effects.resetStyle();
         effects.enabled = new TokiaConfig().effects.enabled;
+    }
+
+    public void resetExtras() {
+        TokiaConfig d = new TokiaConfig();
+        autoSprint = d.autoSprint;
+        warnArmor = d.warnArmor;
+        warnTool = d.warnTool;
+        warnPercent = d.warnPercent;
+    }
+
+    public void clearWaypoints() {
+        waypoints.clear();
+        activeWaypoint = 0;
     }
 
     public void resetZoom() {
@@ -169,8 +229,14 @@ public final class TokiaConfig {
             return;
         }
         try {
-            TokiaConfig loaded = GSON.fromJson(Files.readString(p), TokiaConfig.class);
+            String json = Files.readString(p);
+            TokiaConfig loaded = GSON.fromJson(json, TokiaConfig.class);
             if (loaded != null) {
+                // Neue Menueoptionen fuer vorhandene Configs ergaenzen.
+                if (!json.contains("\"menuAccentRgb\"")) loaded.menuAccentRgb = 0x8B5CF6;
+                if (!json.contains("\"menuRounding\"")) loaded.menuRounding = 9;
+                loaded.menuRounding = Math.max(0, Math.min(12, loaded.menuRounding));
+                loaded.menuAccentRgb &= 0xFFFFFF;
                 instance = loaded;
             }
         } catch (Exception e) {

@@ -1,6 +1,7 @@
 package com.tokia.client.hud;
 
 import com.tokia.client.config.TokiaConfig;
+import com.tokia.client.util.PlayerStats;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
 import net.minecraft.client.Minecraft;
@@ -25,15 +26,22 @@ public final class CrosshairHud {
             if (mc.gui.hud.isHidden() || !mc.options.getCameraType().isFirstPerson()) {
                 return;
             }
-            draw(graphics, cfg, graphics.guiWidth() / 2, graphics.guiHeight() / 2);
+            // Dynamisches Crosshair: waechst, je schneller der Spieler laeuft
+            int extra = cfg.crosshairDynamic ? (int) Math.min(8, Math.round(PlayerStats.speed() * 0.7)) : 0;
+            draw(graphics, cfg, graphics.guiWidth() / 2, graphics.guiHeight() / 2, extra);
         });
     }
 
     /** Zeichnet das Crosshair mit dem Mittelpunkt (cx, cy). Wird auch fuer die Vorschau im Menue genutzt. */
     public static void draw(GuiGraphicsExtractor g, TokiaConfig cfg, int cx, int cy) {
+        draw(g, cfg, cx, cy, 0);
+    }
+
+    public static void draw(GuiGraphicsExtractor g, TokiaConfig cfg, int cx, int cy, int extra) {
         int size = Math.max(1, cfg.crosshairSize);
+        int radius = size + extra / 2;
         int t = Math.max(1, cfg.crosshairThickness);
-        int gap = Math.max(0, cfg.crosshairGap);
+        int gap = Math.max(0, cfg.crosshairGap) + extra;
         int half = t / 2;
         int style = Math.floorMod(cfg.crosshairStyle, TokiaConfig.STYLE_COUNT);
 
@@ -52,19 +60,19 @@ public final class CrosshairHud {
                 rects.add(new int[] {cx - d / 2, cy - d / 2, cx - d / 2 + d, cy - d / 2 + d});
             }
             case 2 -> { // Kreis
-                int steps = Math.max(16, size * 8);
+                int steps = Math.max(16, radius * 8);
                 for (int i = 0; i < steps; i++) {
                     double ang = 2 * Math.PI * i / steps;
-                    int px = cx + (int) Math.round(size * Math.cos(ang)) - half;
-                    int py = cy + (int) Math.round(size * Math.sin(ang)) - half;
+                    int px = cx + (int) Math.round(radius * Math.cos(ang)) - half;
+                    int py = cy + (int) Math.round(radius * Math.sin(ang)) - half;
                     rects.add(new int[] {px, py, px + t, py + t});
                 }
             }
             default -> { // Quadrat
-                int x1 = cx - size;
-                int x2 = cx + size + 1;
-                int y1 = cy - size;
-                int y2 = cy + size + 1;
+                int x1 = cx - radius;
+                int x2 = cx + radius + 1;
+                int y1 = cy - radius;
+                int y2 = cy + radius + 1;
                 rects.add(new int[] {x1, y1, x2, y1 + t});
                 rects.add(new int[] {x1, y2 - t, x2, y2});
                 rects.add(new int[] {x1, y1, x1 + t, y2});

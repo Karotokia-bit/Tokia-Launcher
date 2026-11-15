@@ -1,10 +1,15 @@
 package com.tokia.client.config;
 
+import com.tokia.client.util.Chroma;
+
 /** Gemeinsame Einstellungen einer einzelnen HUD-Anzeige (Position, Farbe, Hintergrund ...). */
 public final class WidgetCfg {
     public boolean enabled = true;
     public boolean label = true;
     public int color = 0xFFFFFF;
+    public boolean rainbow = false;
+    /** Farbe nach Wert (z. B. FPS gruen/gelb/rot); nur bei Anzeigen, die das unterstuetzen. */
+    public boolean dynamicColor = false;
     public boolean background = true;
     public int bgOpacity = 50;
     public boolean shadow = true;
@@ -21,9 +26,14 @@ public final class WidgetCfg {
         this.y = y;
     }
 
+    /** Aktuelle Farbe als RGB (Regenbogen oder feste Farbe). */
+    public int rgb() {
+        return rainbow ? Chroma.rgb() : (color & 0xFFFFFF);
+    }
+
     /** Textfarbe als ARGB. */
     public int textColor() {
-        return 0xFF000000 | (color & 0xFFFFFF);
+        return 0xFF000000 | rgb();
     }
 
     /** Hintergrundfarbe (Schwarz) mit der eingestellten Deckkraft als ARGB. */
@@ -32,11 +42,12 @@ public final class WidgetCfg {
         return Math.round(pct * 2.55f) << 24;
     }
 
-    /** Setzt Aussehen auf Standard (Position und An/Aus bleiben). */
+    /** Setzt Aussehen auf Standard (Position, An/Aus und "Farbe nach Wert" bleiben). */
     public void resetStyle() {
         WidgetCfg d = new WidgetCfg();
         label = d.label;
         color = d.color;
+        rainbow = d.rainbow;
         background = d.background;
         bgOpacity = d.bgOpacity;
         shadow = d.shadow;

@@ -59,7 +59,7 @@ public final class KeystrokesHud {
 
     private static void key(GuiGraphicsExtractor g, Minecraft mc, WidgetCfg c, String label,
                             int x, int y, int w, int h, boolean down) {
-        int rgb = c.color & 0xFFFFFF;
+        int rgb = c.rgb();
         if (down) {
             g.fill(x, y, x + w, y + h, 0xB0000000 | rgb);
         } else if (c.background) {

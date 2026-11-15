@@ -11,7 +11,9 @@ import net.minecraft.network.chat.Component;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.IdentityHashMap;
 import java.util.Locale;
+import java.util.Map;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
@@ -22,15 +24,14 @@ import java.util.function.IntSupplier;
  * Seitenleiste mit Modulen, rechts die Einstellungen des gewaehlten Moduls.
  */
 public class TokiaMenuScreen extends Screen {
-    private static final int ACCENT = 0xFF8B5CF6;
-    private static final int PANEL = 0xF0141420;
-    private static final int SIDEBAR = 0xFF0E0E17;
-    private static final int BORDER = 0xFF2A2A3C;
+    private static final int PANEL = 0xF511141D;
+    private static final int SIDEBAR = 0xFF10121A;
+    private static final int BORDER = 0xFF2A2D3B;
     private static final int HOVER = 0x18FFFFFF;
     private static final int TEXT = 0xFFFFFFFF;
     private static final int SUB = 0xFF9A9AB0;
     private static final int OFF = 0xFF3A3A4C;
-    private static final int SIDE_W = 104;
+    private static final int SIDE_W = 190;
 
     private final Screen parent;
     private final List<Hit> hits = new ArrayList<>();
@@ -40,6 +41,8 @@ public class TokiaMenuScreen extends Screen {
     private int mx;
     private int my;
     private SliderRow dragging;
+    private long openedAt;
+    private final Map<Row, Float> switchMotion = new IdentityHashMap<>();
 
     public TokiaMenuScreen(Screen parent) {
         super(Component.translatable("tokia.menu.title"));
@@ -50,11 +53,24 @@ public class TokiaMenuScreen extends Screen {
         return Component.translatable(key).getString();
     }
 
+    private int accent() {
+        return 0xFF000000 | (TokiaConfig.get().menuAccentRgb & 0xFFFFFF);
+    }
+
+    private int accentSurface() {
+        int rgb = accent();
+        int r = (rgb >> 16) & 0xFF;
+        int g = (rgb >> 8) & 0xFF;
+        int b = rgb & 0xFF;
+        return 0xFF000000 | ((r * 42 / 255) << 16) | ((g * 42 / 255) << 8) | (b * 42 / 255);
+    }
+
     // ------------------------------------------------------------------ Aufbau
 
     @Override
     protected void init() {
         buildModules();
+        openedAt = System.nanoTime();
     }
 
     private void buildModules() {
@@ -70,11 +86,15 @@ public class TokiaMenuScreen extends Screen {
         shape.add(new SliderRow(tr("tokia.opt.size"), () -> c.crosshairSize, v -> c.crosshairSize = v, 1, 20, "", 0));
         shape.add(new SliderRow(tr("tokia.opt.thickness"), () -> c.crosshairThickness, v -> c.crosshairThickness = v, 1, 6, "", 0));
         shape.add(new SliderRow(tr("tokia.opt.gap"), () -> c.crosshairGap, v -> c.crosshairGap = v, 0, 12, "", 0));
-        shape.add(new SwitchRow(tr("tokia.opt.outline"), () -> c.crosshairOutline, v -> c.crosshairOutline = v));
-        shape.add(new SwitchRow(tr("tokia.opt.dot"), () -> c.crosshairDot, v -> c.crosshairDot = v));
+        List<Row> crossExtra = new ArrayList<>();
+        crossExtra.add(new SwitchRow(tr("tokia.opt.outline"), () -> c.crosshairOutline, v -> c.crosshairOutline = v));
+        crossExtra.add(new SwitchRow(tr("tokia.opt.dot"), () -> c.crosshairDot, v -> c.crosshairDot = v));
+        crossExtra.add(new SwitchRow(tr("tokia.opt.dynamic"), () -> c.crosshairDynamic, v -> c.crosshairDynamic = v));
+        crossExtra.add(new TextRow(tr("tokia.opt.dynamic.text")));
 
         // Crosshair: Seite "Farbe"
         List<Row> color = new ArrayList<>();
+        color.add(new SwitchRow(tr("tokia.opt.rainbow"), () -> c.crosshairRainbow, v -> c.crosshairRainbow = v));
         color.add(new SwatchRow(() -> c.crosshairRgb, v -> c.crosshairRgb = v));
         color.add(new SliderRow(tr("tokia.opt.red"), () -> (c.crosshairRgb >> 16) & 0xFF,
             v -> c.crosshairRgb = (c.crosshairRgb & 0x00FFFF) | (v << 16), 0, 255, "", 0xFFFF5555));
@@ -87,6 +107,7 @@ public class TokiaMenuScreen extends Screen {
         List<Page> crosshairPages = new ArrayList<>();
         crosshairPages.add(new Page(tr("tokia.page.shape"), shape));
         crosshairPages.add(new Page(tr("tokia.page.color"), color));
+        crosshairPages.add(new Page(tr("tokia.page.extras"), crossExtra));
         modules.add(new Module(tr("tokia.module.crosshair"), tr("tokia.module.crosshair.desc"),
             () -> c.crosshairEnabled, v -> c.crosshairEnabled = v, c::resetCrosshair, true, crosshairPages));
 
@@ -104,7 +125,7 @@ public class TokiaMenuScreen extends Screen {
         keysGeneral.add(new SwitchRow(tr("tokia.opt.keys_mouse"), () -> c.keystrokesMouse, v -> c.keystrokesMouse = v));
         keysGeneral.add(new SwitchRow(tr("tokia.opt.keys_space"), () -> c.keystrokesSpace, v -> c.keystrokesSpace = v));
         List<Row> keysStyle = new ArrayList<>();
-        keysStyle.add(new StyleEditorRow(c.keys, false, false, false));
+        keysStyle.add(new StyleEditorRow(c.keys, false, false, false, false));
         List<Page> keyPages = new ArrayList<>();
         keyPages.add(new Page(tr("tokia.page.general"), keysGeneral));
         keyPages.add(new Page(tr("tokia.page.style"), keysStyle));
@@ -116,7 +137,7 @@ public class TokiaMenuScreen extends Screen {
         armorGeneral.add(new SwitchRow(tr("tokia.opt.enabled"), () -> c.armor.enabled, v -> c.armor.enabled = v));
         armorGeneral.add(new TextRow(tr("tokia.module.armor.text")));
         List<Row> armorStyle = new ArrayList<>();
-        armorStyle.add(new StyleEditorRow(c.armor, false, false, true));
+        armorStyle.add(new StyleEditorRow(c.armor, false, false, true, false));
         List<Page> armorPages = new ArrayList<>();
         armorPages.add(new Page(tr("tokia.page.general"), armorGeneral));
         armorPages.add(new Page(tr("tokia.page.style"), armorStyle));
@@ -128,7 +149,7 @@ public class TokiaMenuScreen extends Screen {
         effectGeneral.add(new SwitchRow(tr("tokia.opt.enabled"), () -> c.effects.enabled, v -> c.effects.enabled = v));
         effectGeneral.add(new TextRow(tr("tokia.module.effects.text")));
         List<Row> effectStyle = new ArrayList<>();
-        effectStyle.add(new StyleEditorRow(c.effects, false, false, true));
+        effectStyle.add(new StyleEditorRow(c.effects, false, false, true, false));
         List<Page> effectPages = new ArrayList<>();
         effectPages.add(new Page(tr("tokia.page.general"), effectGeneral));
         effectPages.add(new Page(tr("tokia.page.style"), effectStyle));
@@ -144,6 +165,44 @@ public class TokiaMenuScreen extends Screen {
         zoomPages.add(new Page("", zoom));
         modules.add(new Module(tr("tokia.module.zoom"), tr("tokia.module.zoom.desc"),
             () -> c.zoomEnabled, v -> c.zoomEnabled = v, c::resetZoom, false, zoomPages));
+
+        // Extras: Bewegung, Warnungen, Werkzeuge
+        List<Row> move = new ArrayList<>();
+        move.add(new SwitchRow(tr("tokia.opt.auto_sprint"), () -> c.autoSprint, v -> c.autoSprint = v));
+        move.add(new TextRow(tr("tokia.module.extras.sprint.text")));
+        List<Row> warn = new ArrayList<>();
+        warn.add(new SwitchRow(tr("tokia.opt.warn_armor"), () -> c.warnArmor, v -> c.warnArmor = v));
+        warn.add(new SwitchRow(tr("tokia.opt.warn_tool"), () -> c.warnTool, v -> c.warnTool = v));
+        warn.add(new SliderRow(tr("tokia.opt.warn_percent"), () -> c.warnPercent, v -> c.warnPercent = v, 5, 50, "%", 0));
+        List<Row> tools = new ArrayList<>();
+        tools.add(new TextRow(tr("tokia.module.extras.tools.text")));
+        tools.add(new ButtonRow(tr("tokia.menu.clear_waypoints"), c::clearWaypoints));
+        List<Page> extraPages = new ArrayList<>();
+        extraPages.add(new Page(tr("tokia.page.movement"), move));
+        extraPages.add(new Page(tr("tokia.page.warnings"), warn));
+        extraPages.add(new Page(tr("tokia.page.tools"), tools));
+        modules.add(new Module(tr("tokia.module.extras"), tr("tokia.module.extras.desc"),
+            () -> c.autoSprint || c.warnArmor || c.warnTool, v -> {
+                c.autoSprint = v;
+                c.warnArmor = v;
+                c.warnTool = v;
+            }, c::resetExtras, false, extraPages));
+
+        List<Row> designRows = new ArrayList<>();
+        designRows.add(new TextRow(tr("tokia.design.accent_hint")));
+        designRows.add(new SwatchRow(() -> c.menuAccentRgb, v -> c.menuAccentRgb = v));
+        designRows.add(new SliderRow(tr("tokia.opt.red"), () -> (c.menuAccentRgb >> 16) & 0xFF,
+            v -> c.menuAccentRgb = (c.menuAccentRgb & 0x00FFFF) | (v << 16), 0, 255, "", 0xFFFF6666));
+        designRows.add(new SliderRow(tr("tokia.opt.green"), () -> (c.menuAccentRgb >> 8) & 0xFF,
+            v -> c.menuAccentRgb = (c.menuAccentRgb & 0xFF00FF) | (v << 8), 0, 255, "", 0xFF66DD88));
+        designRows.add(new SliderRow(tr("tokia.opt.blue"), () -> c.menuAccentRgb & 0xFF,
+            v -> c.menuAccentRgb = (c.menuAccentRgb & 0xFFFF00) | v, 0, 255, "", 0xFF6699FF));
+        designRows.add(new SliderRow(tr("tokia.design.rounding"), () -> c.menuRounding,
+            v -> c.menuRounding = v, 0, 12, "", 0));
+        List<Page> designPages = new ArrayList<>();
+        designPages.add(new Page("", designRows));
+        modules.add(new Module(tr("tokia.module.design"), tr("tokia.module.design.desc"),
+            () -> false, v -> {}, () -> { c.menuAccentRgb = 0x8B5CF6; c.menuRounding = 9; }, false, designPages));
     }
 
     // ------------------------------------------------------------------ Zeichnen
@@ -161,47 +220,56 @@ public class TokiaMenuScreen extends Screen {
             buildModules();
         }
 
-        int pw = Math.min(this.width - 20, 430);
-        int ph = Math.min(this.height - 10, 260);
+        float open = Math.min(1f, (System.nanoTime() - openedAt) / 260_000_000f);
+        open = 1f - (float)Math.pow(1f - open, 3);
+        int pw = Math.min(this.width - 40, 920);
+        int ph = Math.min(this.height - 36, 600);
         int px = (this.width - pw) / 2;
-        int py = (this.height - ph) / 2;
+        int py = (this.height - ph) / 2 + Math.round((1f - open) * 12);
 
-        // Panel mit Rahmen und Seitenleiste
-        g.fill(px - 1, py - 1, px + pw + 1, py + ph + 1, BORDER);
-        g.fill(px, py, px + pw, py + ph, PANEL);
-        g.fill(px, py, px + SIDE_W, py + ph, SIDEBAR);
-        g.fill(px + SIDE_W, py, px + SIDE_W + 1, py + ph, BORDER);
+        // Sanftes Overlay und abgerundete, leicht schwebende Oberflaeche.
+        g.fill(0, 0, this.width, this.height, 0x78060910);
+        rounded(g, px - 3, py - 3, pw + 6, ph + 6, 28, 0x4021263A);
+        rounded(g, px - 1, py - 1, pw + 2, ph + 2, 27, BORDER);
+        rounded(g, px, py, pw, ph, 26, PANEL);
+        rounded(g, px + 1, py + 1, SIDE_W + 14, ph - 2, 25, SIDEBAR);
+        g.fill(px + SIDE_W + 14, py + 28, px + SIDE_W + 15, py + ph - 28, 0xFF282B38);
+        rounded(g, px + 18, py + 48, 48, 3, 2, accent());
 
         // Seitenleiste
-        g.text(this.font, "TOKIA", px + 12, py + 14, ACCENT, true);
+        g.text(this.font, "TOKIA", px + 18, py + 16, TEXT, true);
+        g.text(this.font, "CLIENT HUB", px + 18, py + 31, SUB, false);
         for (int i = 0; i < modules.size(); i++) {
             final Module m = modules.get(i);
             final int idx = i;
-            int iy = py + 44 + i * 24;
+            int iy = py + 62 + i * 34;
             boolean sel = i == selectedModule;
             if (sel) {
-                g.fill(px + 4, iy, px + SIDE_W - 4, iy + 22, 0xFF1E1A33);
-                g.fill(px + 4, iy, px + 6, iy + 22, ACCENT);
-            } else if (inside(px + 4, iy, SIDE_W - 8, 22)) {
-                g.fill(px + 4, iy, px + SIDE_W - 4, iy + 22, HOVER);
+                rounded(g, px + 10, iy, SIDE_W - 20, 29, 13, accentSurface());
+                rounded(g, px + 10, iy + 7, 3, 15, 2, accent());
+            } else if (inside(px + 6, iy, SIDE_W - 12, 29)) {
+                rounded(g, px + 10, iy, SIDE_W - 20, 29, 13, HOVER);
             }
-            g.text(this.font, m.name, px + 14, iy + 7, sel ? TEXT : SUB, false);
-            hit(px + 4, iy, SIDE_W - 8, 22, () -> {
+            String marker = String.valueOf(Character.toUpperCase(m.name.isEmpty() ? '•' : m.name.charAt(0)));
+            rounded(g, px + 18, iy + 7, 16, 16, 6, sel ? accent() : 0xFF292B39);
+            g.text(this.font, marker, px + 23, iy + 11, TEXT, true);
+            g.text(this.font, m.name, px + 42, iy + 11, sel ? TEXT : SUB, false);
+            hit(px + 6, iy, SIDE_W - 12, 29, () -> {
                 selectedModule = idx;
                 selectedPage = 0;
             });
             boolean on = m.enabled.getAsBoolean();
-            g.fill(px + SIDE_W - 16, iy + 8, px + SIDE_W - 10, iy + 14, on ? 0xFF55FF55 : 0xFF555566);
-            hit(px + SIDE_W - 20, iy + 4, 14, 14, () -> m.setEnabled.accept(!m.enabled.getAsBoolean()));
+            rounded(g, px + SIDE_W - 28, iy + 11, 7, 7, 3, on ? 0xFF65E6B3 : 0xFF555566);
+            hit(px + SIDE_W - 30, iy + 6, 14, 18, () -> m.setEnabled.accept(!m.enabled.getAsBoolean()));
         }
         int ebx = px + 8;
-        int eby = py + ph - 40;
-        int ebw = SIDE_W - 16;
+        int eby = py + ph - 54;
+        int ebw = SIDE_W - 24;
         String editLabel = tr("tokia.menu.edit_hud");
-        g.fill(ebx, eby, ebx + ebw, eby + 16, inside(ebx, eby, ebw, 16) ? 0xFF2E2E42 : 0xFF1C1C2B);
-        g.text(this.font, editLabel, ebx + (ebw - this.font.width(editLabel)) / 2, eby + 4, TEXT, false);
-        hit(ebx, eby, ebw, 16, () -> this.minecraft.gui.setScreen(new HudEditorScreen(this)));
-        g.text(this.font, tr("tokia.menu.hint"), px + 12, py + ph - 14, SUB, false);
+        rounded(g, ebx, eby, ebw, 30, 13, inside(ebx, eby, ebw, 30) ? 0xFF343047 : 0xFF242631);
+        g.text(this.font, editLabel, ebx + (ebw - this.font.width(editLabel)) / 2, eby + 10, TEXT, false);
+        hit(ebx, eby, ebw, 30, () -> this.minecraft.gui.setScreen(new HudEditorScreen(this)));
+        g.text(this.font, tr("tokia.menu.hint"), px + 18, py + ph - 16, SUB, false);
 
         // Inhalt
         if (selectedModule >= modules.size()) {
@@ -211,47 +279,69 @@ public class TokiaMenuScreen extends Screen {
         if (selectedPage >= m.pages.size()) {
             selectedPage = 0;
         }
-        int cx = px + SIDE_W + 14;
-        int cw = pw - SIDE_W - 28;
-        g.text(this.font, m.name, cx, py + 10, TEXT, true);
-        g.text(this.font, m.desc, cx, py + 22, SUB, false);
+        int cx = px + SIDE_W + 36;
+        int cw = pw - SIDE_W - 58;
+        g.text(this.font, m.name, cx, py + 18, TEXT, true);
+        g.text(this.font, m.desc, cx, py + 34, SUB, false);
 
         String resetLabel = tr("tokia.menu.reset");
-        int rw = this.font.width(resetLabel) + 12;
+        int rw = this.font.width(resetLabel) + 22;
         int rx = cx + cw - rw;
-        int ry = py + 8;
-        g.fill(rx, ry, rx + rw, ry + 14, inside(rx, ry, rw, 14) ? 0xFF2E2E42 : 0xFF1C1C2B);
-        g.text(this.font, resetLabel, rx + 6, ry + 3, SUB, false);
-        hit(rx, ry, rw, 14, m.reset);
+        int ry = py + 15;
+        rounded(g, rx, ry, rw, 27, 12, inside(rx, ry, rw, 27) ? 0xFF343047 : 0xFF242631);
+        g.text(this.font, resetLabel, rx + 11, ry + 10, SUB, false);
+        hit(rx, ry, rw, 27, m.reset);
 
-        int rowsY = py + 42;
+        int rowsY = py + 67;
         if (m.pages.size() > 1) {
             int tx = cx;
             for (int i = 0; i < m.pages.size(); i++) {
                 final int idx = i;
                 String name = m.pages.get(i).name;
-                int tw = this.font.width(name) + 14;
+                int tw = this.font.width(name) + 28;
                 boolean sel = i == selectedPage;
-                int bg = sel ? 0xFF2A2250 : (inside(tx, py + 36, tw, 15) ? 0xFF22222F : 0xFF181824);
-                g.fill(tx, py + 36, tx + tw, py + 51, bg);
-                if (sel) {
-                    g.fill(tx, py + 49, tx + tw, py + 51, ACCENT);
-                }
-                g.text(this.font, name, tx + 7, py + 40, sel ? TEXT : SUB, false);
-                hit(tx, py + 36, tw, 15, () -> selectedPage = idx);
-                tx += tw + 4;
+                int bg = sel ? accentSurface() : (inside(tx, py + 55, tw, 26) ? 0xFF292C39 : 0xFF1B1D28);
+                rounded(g, tx, py + 55, tw, 26, 13, bg);
+                g.text(this.font, name, tx + 14, py + 65, sel ? TEXT : SUB, false);
+                hit(tx, py + 55, tw, 26, () -> selectedPage = idx);
+                tx += tw + 8;
             }
-            rowsY = py + 58;
+            rowsY = py + 94;
         }
 
         boolean preview = m.preview && cw >= 250;
-        int rowsW = preview ? cw - 100 : cw;
+        int rowsW = preview ? cw - 148 : cw;
         int yy = rowsY;
         for (Row row : m.pages.get(selectedPage).rows) {
-            yy += row.render(g, cx, yy, rowsW);
+            int hitStart = hits.size();
+            int contentHeight = row.render(g, cx + 14, yy + 10, rowsW - 28);
+            while (hits.size() > hitStart) hits.remove(hits.size() - 1);
+            int cardHeight = Math.max(38, contentHeight + 20);
+            rounded(g, cx, yy, rowsW, cardHeight, 16, 0xFF1B1E29);
+            // Redraw row above the card: cards sit behind their controls.
+            row.render(g, cx + 14, yy + 10, rowsW - 28);
+            yy += cardHeight + 10;
         }
         if (preview) {
-            drawPreview(g, cx + cw - 90, rowsY);
+            drawPreview(g, cx + cw - 122, rowsY);
+        }
+    }
+
+    /** Rounded rectangles drawn as scanlines, so this works without custom textures or shaders. */
+    private void rounded(GuiGraphicsExtractor g, int x, int y, int w, int h, int radius, int color) {
+        if (w <= 0 || h <= 0) return;
+        int userRadius = TokiaConfig.get().menuRounding;
+        int r = Math.max(0, Math.min(Math.round(radius * (userRadius / 12f)), Math.min(w, h) / 2));
+        for (int row = 0; row < h; row++) {
+            int inset = 0;
+            if (row < r) {
+                double dy = r - row - 0.5;
+                inset = r - (int)Math.floor(Math.sqrt(Math.max(0, r * r - dy * dy)));
+            } else if (row >= h - r) {
+                double dy = row - (h - r) + 0.5;
+                inset = r - (int)Math.floor(Math.sqrt(Math.max(0, r * r - dy * dy)));
+            }
+            g.fill(x + inset, y + row, x + w - inset, y + row + 1, color);
         }
     }
 
@@ -259,7 +349,7 @@ public class TokiaMenuScreen extends Screen {
         int s = 90;
         g.text(this.font, tr("tokia.menu.preview"), x, y, SUB, false);
         int by = y + 12;
-        g.fill(x - 1, by - 1, x + s + 1, by + s + 1, BORDER);
+        rounded(g, x - 1, by - 1, s + 2, s + 2, 9, BORDER);
         g.fill(x, by, x + s, by + s / 2 + 10, 0xFF6FA8DC);
         g.fill(x, by + s / 2 + 10, x + s, by + s, 0xFF5B8C3A);
         TokiaConfig c = TokiaConfig.get();
@@ -390,15 +480,19 @@ public class TokiaMenuScreen extends Screen {
         @Override
         int render(GuiGraphicsExtractor g, int x, int y, int w) {
             if (inside(x, y, w, 20)) {
-                g.fill(x, y, x + w, y + 20, HOVER);
+            rounded(g, x + 2, y + 1, w - 4, 18, 6, HOVER);
             }
             g.text(font, label, x + 6, y + 6, TEXT, false);
             boolean on = get.getAsBoolean();
             int sx = x + w - 30;
             int sy = y + 5;
-            g.fill(sx, sy, sx + 24, sy + 10, on ? ACCENT : OFF);
-            int kx = on ? sx + 14 : sx + 2;
-            g.fill(kx, sy + 2, kx + 8, sy + 8, 0xFFFFFFFF);
+            float target = on ? 1f : 0f;
+            float current = switchMotion.getOrDefault(this, target);
+            current += (target - current) * 0.28f;
+            switchMotion.put(this, current);
+            rounded(g, sx, sy, 26, 12, 6, on ? accent() : OFF);
+            int kx = sx + 2 + Math.round(current * 12);
+            rounded(g, kx, sy + 2, 8, 8, 4, 0xFFFFFFFF);
             hit(x, y, w, 20, () -> set.accept(!get.getAsBoolean()));
             return 20;
         }
@@ -446,11 +540,11 @@ public class TokiaMenuScreen extends Screen {
             bx = x + 6;
             bw = w - 12;
             int by = y + 17;
-            g.fill(bx, by, bx + bw, by + 3, OFF);
+            rounded(g, bx, by, bw, 4, 2, OFF);
             float f = (value - min) / (float) (max - min);
             int fx = bx + Math.round(f * bw);
-            g.fill(bx, by, fx, by + 3, tint != 0 ? tint : ACCENT);
-            g.fill(fx - 2, by - 3, fx + 2, by + 6, 0xFFFFFFFF);
+            rounded(g, bx, by, Math.max(0, fx - bx), 4, 2, tint != 0 ? tint : accent());
+            rounded(g, fx - 3, by - 2, 7, 8, 4, 0xFFFFFFFF);
             hits.add(new Hit(x, y, w, 26, null, this));
             return 26;
         }
@@ -480,8 +574,8 @@ public class TokiaMenuScreen extends Screen {
                 final int idx = i;
                 int sx = x + 6 + i * segW;
                 boolean sel = i == current;
-                int bg = sel ? ACCENT : (inside(sx, sy, segW, 14) ? 0xFF2E2E42 : 0xFF1C1C2B);
-                g.fill(sx, sy, sx + segW - 2, sy + 14, bg);
+                int bg = sel ? accent() : (inside(sx, sy, segW, 14) ? 0xFF2E2E42 : 0xFF1C1C2B);
+                rounded(g, sx, sy, segW - 3, 16, 5, bg);
                 g.text(font, names[i], sx + (segW - 2 - font.width(names[i])) / 2, sy + 3, sel ? TEXT : SUB, false);
                 hit(sx, sy, segW, 14, () -> set.accept(idx));
             }
@@ -509,11 +603,11 @@ public class TokiaMenuScreen extends Screen {
                 int sx = x + 6 + (i % cols) * (size + gap);
                 int sy = y + 3 + (i / cols) * (size + gap);
                 if (rgb == current) {
-                    g.fill(sx - 2, sy - 2, sx + size + 2, sy + size + 2, 0xFFFFFFFF);
+                    rounded(g, sx - 2, sy - 2, size + 4, size + 4, 5, 0xFFFFFFFF);
                 } else if (inside(sx, sy, size, size)) {
-                    g.fill(sx - 1, sy - 1, sx + size + 1, sy + size + 1, SUB);
+                    rounded(g, sx - 1, sy - 1, size + 2, size + 2, 5, SUB);
                 }
-                g.fill(sx, sy, sx + size, sy + size, 0xFF000000 | rgb);
+                rounded(g, sx, sy, size, size, 4, 0xFF000000 | rgb);
                 hit(sx, sy, size, size, () -> set.accept(rgb));
             }
             return 42;
@@ -525,7 +619,7 @@ public class TokiaMenuScreen extends Screen {
         final List<Row> left = new ArrayList<>();
         final List<Row> right = new ArrayList<>();
 
-        StyleEditorRow(WidgetCfg cfg, boolean enabledRow, boolean labelRow, boolean shadowRow) {
+        StyleEditorRow(WidgetCfg cfg, boolean enabledRow, boolean labelRow, boolean shadowRow, boolean dynamicRow) {
             if (enabledRow) {
                 left.add(new SwitchRow(tr("tokia.opt.enabled"), () -> cfg.enabled, v -> cfg.enabled = v));
             }
@@ -537,6 +631,10 @@ public class TokiaMenuScreen extends Screen {
             if (shadowRow) {
                 left.add(new SwitchRow(tr("tokia.opt.shadow"), () -> cfg.shadow, v -> cfg.shadow = v));
             }
+            if (dynamicRow) {
+                left.add(new SwitchRow(tr("tokia.opt.dynamic_color"), () -> cfg.dynamicColor, v -> cfg.dynamicColor = v));
+            }
+            right.add(new SwitchRow(tr("tokia.opt.rainbow"), () -> cfg.rainbow, v -> cfg.rainbow = v));
             right.add(new SwatchRow(() -> cfg.color, v -> cfg.color = v));
             right.add(new SliderRow(tr("tokia.opt.red"), () -> (cfg.color >> 16) & 0xFF,
                 v -> cfg.color = (cfg.color & 0x00FFFF) | (v << 16), 0, 255, "", 0xFFFF5555));
@@ -570,7 +668,7 @@ public class TokiaMenuScreen extends Screen {
         WidgetTilesRow() {
             TokiaConfig c = TokiaConfig.get();
             for (InfoHud.Def d : InfoHud.DEFS) {
-                editors.add(new StyleEditorRow(d.cfg.apply(c), true, true, true));
+                editors.add(new StyleEditorRow(d.cfg.apply(c), true, true, true, d.supportsDynamicColor()));
             }
         }
 
@@ -591,15 +689,15 @@ public class TokiaMenuScreen extends Screen {
                 WidgetCfg c = d.cfg.apply(cfg);
                 int tx = x + (i % 2) * (tileW + 6);
                 int ty = y + (i / 2) * 24;
-                g.fill(tx, ty, tx + tileW, ty + 22, inside(tx, ty, tileW, 22) ? 0xFF22222F : 0xFF181824);
+                rounded(g, tx, ty, tileW, 22, 7, inside(tx, ty, tileW, 22) ? 0xFF292936 : 0xFF1B1B27);
                 boolean on = c.enabled;
-                g.fill(tx + 6, ty + 7, tx + 24, ty + 15, on ? ACCENT : OFF);
+                rounded(g, tx + 6, ty + 7, 20, 9, 5, on ? accent() : OFF);
                 int kx = on ? tx + 16 : tx + 8;
-                g.fill(kx, ty + 8, kx + 6, ty + 14, 0xFFFFFFFF);
+                rounded(g, kx, ty + 8, 6, 6, 3, 0xFFFFFFFF);
                 g.text(font, tr(d.nameKey), tx + 30, ty + 7, on ? TEXT : SUB, false);
                 hit(tx, ty, tileW, 22, () -> c.enabled = !c.enabled);
                 int ex = tx + tileW - ew - 4;
-                g.fill(ex, ty + 4, ex + ew, ty + 18, inside(ex, ty + 4, ew, 14) ? 0xFF2E2E42 : 0xFF232336);
+                rounded(g, ex, ty + 4, ew, 14, 5, inside(ex, ty + 4, ew, 14) ? 0xFF343047 : 0xFF252534);
                 g.text(font, editLabel, ex + 5, ty + 7, SUB, false);
                 hit(ex, ty + 4, ew, 14, () -> selected = idx);
             }
@@ -611,15 +709,34 @@ public class TokiaMenuScreen extends Screen {
             WidgetCfg c = d.cfg.apply(TokiaConfig.get());
             String back = "< " + tr("tokia.menu.back");
             int bw = font.width(back) + 12;
-            g.fill(x, y, x + bw, y + 14, inside(x, y, bw, 14) ? 0xFF2E2E42 : 0xFF1C1C2B);
+            rounded(g, x, y, bw, 16, 6, inside(x, y, bw, 16) ? 0xFF343047 : 0xFF242431);
             g.text(font, back, x + 6, y + 3, SUB, false);
             hit(x, y, bw, 14, () -> selected = -1);
             g.text(font, tr(d.nameKey), x + bw + 8, y + 3, TEXT, true);
 
             int py2 = y + 20;
             g.fill(x, py2, x + w, py2 + 24, 0xFF3A4A5A);
-            InfoHud.drawBox(g, minecraft, c, InfoHud.text(d, minecraft, c), x + 8, py2 + 5);
+            InfoHud.drawBox(g, minecraft, c, InfoHud.text(d, minecraft, c), InfoHud.colorFor(d, minecraft, c), x + 8, py2 + 5);
             return 50 + editors.get(selected).render(g, x, y + 50, w);
+        }
+    }
+
+    private final class ButtonRow extends Row {
+        final String label;
+        final Runnable action;
+
+        ButtonRow(String label, Runnable action) {
+            this.label = label;
+            this.action = action;
+        }
+
+        @Override
+        int render(GuiGraphicsExtractor g, int x, int y, int w) {
+            int bw = font.width(label) + 16;
+            rounded(g, x + 6, y + 3, bw, 18, 6, inside(x + 6, y + 3, bw, 18) ? 0xFF343047 : 0xFF242431);
+            g.text(font, label, x + 14, y + 7, TEXT, false);
+            hit(x + 6, y + 3, bw, 16, action);
+            return 22;
         }
     }
 
@@ -660,3 +777,4 @@ public class TokiaMenuScreen extends Screen {
         return out;
     }
 }
+
