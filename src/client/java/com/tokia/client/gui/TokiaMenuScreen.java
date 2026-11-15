@@ -12,6 +12,8 @@ import net.minecraft.network.chat.Component;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.IdentityHashMap;
+import java.util.Map;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
@@ -23,14 +25,14 @@ import java.util.function.IntSupplier;
  */
 public class TokiaMenuScreen extends Screen {
     private static final int ACCENT = 0xFF8B5CF6;
-    private static final int PANEL = 0xF0141420;
-    private static final int SIDEBAR = 0xFF0E0E17;
-    private static final int BORDER = 0xFF2A2A3C;
-    private static final int HOVER = 0x18FFFFFF;
+    private static final int PANEL = 0xF5121420;
+    private static final int SIDEBAR = 0xFF11131D;
+    private static final int BORDER = 0xFF343044;
+    private static final int HOVER = 0x16FFFFFF;
     private static final int TEXT = 0xFFFFFFFF;
     private static final int SUB = 0xFF9A9AB0;
     private static final int OFF = 0xFF3A3A4C;
-    private static final int SIDE_W = 104;
+    private static final int SIDE_W = 132;
 
     private final Screen parent;
     private final List<Hit> hits = new ArrayList<>();
@@ -40,6 +42,8 @@ public class TokiaMenuScreen extends Screen {
     private int mx;
     private int my;
     private SliderRow dragging;
+    private long openedAt;
+    private final Map<Row, Float> switchMotion = new IdentityHashMap<>();
 
     public TokiaMenuScreen(Screen parent) {
         super(Component.translatable("tokia.menu.title"));
@@ -55,6 +59,7 @@ public class TokiaMenuScreen extends Screen {
     @Override
     protected void init() {
         buildModules();
+        openedAt = System.nanoTime();
     }
 
     private void buildModules() {
@@ -188,16 +193,20 @@ public class TokiaMenuScreen extends Screen {
             buildModules();
         }
 
-        int pw = Math.min(this.width - 20, 430);
-        int ph = Math.min(this.height - 10, 260);
+        float open = Math.min(1f, (System.nanoTime() - openedAt) / 260_000_000f);
+        open = 1f - (float)Math.pow(1f - open, 3);
+        int pw = Math.min(this.width - 28, 560);
+        int ph = Math.min(this.height - 20, 340);
         int px = (this.width - pw) / 2;
-        int py = (this.height - ph) / 2;
+        int py = (this.height - ph) / 2 + Math.round((1f - open) * 12);
 
-        // Panel mit Rahmen und Seitenleiste
-        g.fill(px - 1, py - 1, px + pw + 1, py + ph + 1, BORDER);
-        g.fill(px, py, px + pw, py + ph, PANEL);
-        g.fill(px, py, px + SIDE_W, py + ph, SIDEBAR);
-        g.fill(px + SIDE_W, py, px + SIDE_W + 1, py + ph, BORDER);
+        // Sanftes Overlay und abgerundete, leicht schwebende Oberflaeche.
+        g.fill(0, 0, this.width, this.height, 0x78060910);
+        rounded(g, px - 2, py - 2, pw + 4, ph + 4, 15, BORDER);
+        rounded(g, px, py, pw, ph, 13, PANEL);
+        rounded(g, px + 1, py + 1, SIDE_W + 10, ph - 2, 12, SIDEBAR);
+        g.fill(px + SIDE_W, py + 14, px + SIDE_W + 1, py + ph - 14, 0xFF282638);
+        rounded(g, px + 15, py + 32, 38, 2, 1, ACCENT);
 
         // Seitenleiste
         g.text(this.font, "TOKIA", px + 12, py + 14, ACCENT, true);
@@ -207,10 +216,10 @@ public class TokiaMenuScreen extends Screen {
             int iy = py + 44 + i * 22;
             boolean sel = i == selectedModule;
             if (sel) {
-                g.fill(px + 4, iy, px + SIDE_W - 4, iy + 20, 0xFF1E1A33);
-                g.fill(px + 4, iy, px + 6, iy + 20, ACCENT);
+                rounded(g, px + 7, iy, SIDE_W - 14, 21, 7, 0xFF211D35);
+                rounded(g, px + 7, iy + 4, 3, 13, 1, ACCENT);
             } else if (inside(px + 4, iy, SIDE_W - 8, 20)) {
-                g.fill(px + 4, iy, px + SIDE_W - 4, iy + 20, HOVER);
+                rounded(g, px + 7, iy, SIDE_W - 14, 21, 7, HOVER);
             }
             g.text(this.font, m.name, px + 14, iy + 7, sel ? TEXT : SUB, false);
             hit(px + 4, iy, SIDE_W - 8, 20, () -> {
@@ -218,14 +227,14 @@ public class TokiaMenuScreen extends Screen {
                 selectedPage = 0;
             });
             boolean on = m.enabled.getAsBoolean();
-            g.fill(px + SIDE_W - 16, iy + 8, px + SIDE_W - 10, iy + 14, on ? 0xFF55FF55 : 0xFF555566);
+            rounded(g, px + SIDE_W - 20, iy + 7, 7, 7, 3, on ? 0xFF65E6B3 : 0xFF555566);
             hit(px + SIDE_W - 20, iy + 4, 14, 14, () -> m.setEnabled.accept(!m.enabled.getAsBoolean()));
         }
         int ebx = px + 8;
         int eby = py + ph - 36;
         int ebw = SIDE_W - 16;
         String editLabel = tr("tokia.menu.edit_hud");
-        g.fill(ebx, eby, ebx + ebw, eby + 16, inside(ebx, eby, ebw, 16) ? 0xFF2E2E42 : 0xFF1C1C2B);
+        rounded(g, ebx, eby, ebw, 19, 7, inside(ebx, eby, ebw, 19) ? 0xFF343047 : 0xFF242431);
         g.text(this.font, editLabel, ebx + (ebw - this.font.width(editLabel)) / 2, eby + 4, TEXT, false);
         hit(ebx, eby, ebw, 16, () -> this.minecraft.gui.setScreen(new HudEditorScreen(this)));
         g.text(this.font, tr("tokia.menu.hint"), px + 12, py + ph - 14, SUB, false);
@@ -247,7 +256,7 @@ public class TokiaMenuScreen extends Screen {
         int rw = this.font.width(resetLabel) + 12;
         int rx = cx + cw - rw;
         int ry = py + 8;
-        g.fill(rx, ry, rx + rw, ry + 14, inside(rx, ry, rw, 14) ? 0xFF2E2E42 : 0xFF1C1C2B);
+        rounded(g, rx, ry, rw, 17, 6, inside(rx, ry, rw, 17) ? 0xFF343047 : 0xFF242431);
         g.text(this.font, resetLabel, rx + 6, ry + 3, SUB, false);
         hit(rx, ry, rw, 14, m.reset);
 
@@ -259,10 +268,10 @@ public class TokiaMenuScreen extends Screen {
                 String name = m.pages.get(i).name;
                 int tw = this.font.width(name) + 14;
                 boolean sel = i == selectedPage;
-                int bg = sel ? 0xFF2A2250 : (inside(tx, py + 36, tw, 15) ? 0xFF22222F : 0xFF181824);
-                g.fill(tx, py + 36, tx + tw, py + 51, bg);
+                int bg = sel ? 0xFF30264E : (inside(tx, py + 36, tw, 18) ? 0xFF292936 : 0xFF1B1B27);
+                rounded(g, tx, py + 36, tw, 18, 6, bg);
                 if (sel) {
-                    g.fill(tx, py + 49, tx + tw, py + 51, ACCENT);
+                    rounded(g, tx + 7, py + 51, tw - 14, 2, 1, ACCENT);
                 }
                 g.text(this.font, name, tx + 7, py + 40, sel ? TEXT : SUB, false);
                 hit(tx, py + 36, tw, 15, () -> selectedPage = idx);
@@ -282,11 +291,28 @@ public class TokiaMenuScreen extends Screen {
         }
     }
 
+    /** Rounded rectangles drawn as scanlines, so this works without custom textures or shaders. */
+    private void rounded(GuiGraphicsExtractor g, int x, int y, int w, int h, int radius, int color) {
+        if (w <= 0 || h <= 0) return;
+        int r = Math.max(0, Math.min(radius, Math.min(w, h) / 2));
+        for (int row = 0; row < h; row++) {
+            int inset = 0;
+            if (row < r) {
+                double dy = r - row - 0.5;
+                inset = r - (int)Math.floor(Math.sqrt(Math.max(0, r * r - dy * dy)));
+            } else if (row >= h - r) {
+                double dy = row - (h - r) + 0.5;
+                inset = r - (int)Math.floor(Math.sqrt(Math.max(0, r * r - dy * dy)));
+            }
+            g.fill(x + inset, y + row, x + w - inset, y + row + 1, color);
+        }
+    }
+
     private void drawPreview(GuiGraphicsExtractor g, int x, int y) {
         int s = 90;
         g.text(this.font, tr("tokia.menu.preview"), x, y, SUB, false);
         int by = y + 12;
-        g.fill(x - 1, by - 1, x + s + 1, by + s + 1, BORDER);
+        rounded(g, x - 1, by - 1, s + 2, s + 2, 9, BORDER);
         g.fill(x, by, x + s, by + s / 2 + 10, 0xFF6FA8DC);
         g.fill(x, by + s / 2 + 10, x + s, by + s, 0xFF5B8C3A);
         TokiaConfig c = TokiaConfig.get();
@@ -417,15 +443,19 @@ public class TokiaMenuScreen extends Screen {
         @Override
         int render(GuiGraphicsExtractor g, int x, int y, int w) {
             if (inside(x, y, w, 20)) {
-                g.fill(x, y, x + w, y + 20, HOVER);
+            rounded(g, x + 2, y + 1, w - 4, 18, 6, HOVER);
             }
             g.text(font, label, x + 6, y + 6, TEXT, false);
             boolean on = get.getAsBoolean();
             int sx = x + w - 30;
             int sy = y + 5;
-            g.fill(sx, sy, sx + 24, sy + 10, on ? ACCENT : OFF);
-            int kx = on ? sx + 14 : sx + 2;
-            g.fill(kx, sy + 2, kx + 8, sy + 8, 0xFFFFFFFF);
+            float target = on ? 1f : 0f;
+            float current = switchMotion.getOrDefault(this, target);
+            current += (target - current) * 0.28f;
+            switchMotion.put(this, current);
+            rounded(g, sx, sy, 26, 12, 6, on ? ACCENT : OFF);
+            int kx = sx + 2 + Math.round(current * 12);
+            rounded(g, kx, sy + 2, 8, 8, 4, 0xFFFFFFFF);
             hit(x, y, w, 20, () -> set.accept(!get.getAsBoolean()));
             return 20;
         }
@@ -473,11 +503,11 @@ public class TokiaMenuScreen extends Screen {
             bx = x + 6;
             bw = w - 12;
             int by = y + 17;
-            g.fill(bx, by, bx + bw, by + 3, OFF);
+            rounded(g, bx, by, bw, 4, 2, OFF);
             float f = (value - min) / (float) (max - min);
             int fx = bx + Math.round(f * bw);
-            g.fill(bx, by, fx, by + 3, tint != 0 ? tint : ACCENT);
-            g.fill(fx - 2, by - 3, fx + 2, by + 6, 0xFFFFFFFF);
+            rounded(g, bx, by, Math.max(0, fx - bx), 4, 2, tint != 0 ? tint : ACCENT);
+            rounded(g, fx - 3, by - 2, 7, 8, 4, 0xFFFFFFFF);
             hits.add(new Hit(x, y, w, 26, null, this));
             return 26;
         }
@@ -508,7 +538,7 @@ public class TokiaMenuScreen extends Screen {
                 int sx = x + 6 + i * segW;
                 boolean sel = i == current;
                 int bg = sel ? ACCENT : (inside(sx, sy, segW, 14) ? 0xFF2E2E42 : 0xFF1C1C2B);
-                g.fill(sx, sy, sx + segW - 2, sy + 14, bg);
+                rounded(g, sx, sy, segW - 3, 16, 5, bg);
                 g.text(font, names[i], sx + (segW - 2 - font.width(names[i])) / 2, sy + 3, sel ? TEXT : SUB, false);
                 hit(sx, sy, segW, 14, () -> set.accept(idx));
             }
@@ -536,11 +566,11 @@ public class TokiaMenuScreen extends Screen {
                 int sx = x + 6 + (i % cols) * (size + gap);
                 int sy = y + 3 + (i / cols) * (size + gap);
                 if (rgb == current) {
-                    g.fill(sx - 2, sy - 2, sx + size + 2, sy + size + 2, 0xFFFFFFFF);
+                    rounded(g, sx - 2, sy - 2, size + 4, size + 4, 5, 0xFFFFFFFF);
                 } else if (inside(sx, sy, size, size)) {
-                    g.fill(sx - 1, sy - 1, sx + size + 1, sy + size + 1, SUB);
+                    rounded(g, sx - 1, sy - 1, size + 2, size + 2, 5, SUB);
                 }
-                g.fill(sx, sy, sx + size, sy + size, 0xFF000000 | rgb);
+                rounded(g, sx, sy, size, size, 4, 0xFF000000 | rgb);
                 hit(sx, sy, size, size, () -> set.accept(rgb));
             }
             return 42;
@@ -622,15 +652,15 @@ public class TokiaMenuScreen extends Screen {
                 WidgetCfg c = d.cfg.apply(cfg);
                 int tx = x + (i % 2) * (tileW + 6);
                 int ty = y + (i / 2) * 24;
-                g.fill(tx, ty, tx + tileW, ty + 22, inside(tx, ty, tileW, 22) ? 0xFF22222F : 0xFF181824);
+                rounded(g, tx, ty, tileW, 22, 7, inside(tx, ty, tileW, 22) ? 0xFF292936 : 0xFF1B1B27);
                 boolean on = c.enabled;
-                g.fill(tx + 6, ty + 7, tx + 24, ty + 15, on ? ACCENT : OFF);
+                rounded(g, tx + 6, ty + 7, 20, 9, 5, on ? ACCENT : OFF);
                 int kx = on ? tx + 16 : tx + 8;
-                g.fill(kx, ty + 8, kx + 6, ty + 14, 0xFFFFFFFF);
+                rounded(g, kx, ty + 8, 6, 6, 3, 0xFFFFFFFF);
                 g.text(font, tr(d.nameKey), tx + 30, ty + 7, on ? TEXT : SUB, false);
                 hit(tx, ty, tileW, 22, () -> c.enabled = !c.enabled);
                 int ex = tx + tileW - ew - 4;
-                g.fill(ex, ty + 4, ex + ew, ty + 18, inside(ex, ty + 4, ew, 14) ? 0xFF2E2E42 : 0xFF232336);
+                rounded(g, ex, ty + 4, ew, 14, 5, inside(ex, ty + 4, ew, 14) ? 0xFF343047 : 0xFF252534);
                 g.text(font, editLabel, ex + 5, ty + 7, SUB, false);
                 hit(ex, ty + 4, ew, 14, () -> selected = idx);
             }
@@ -642,7 +672,7 @@ public class TokiaMenuScreen extends Screen {
             WidgetCfg c = d.cfg.apply(TokiaConfig.get());
             String back = "< " + tr("tokia.menu.back");
             int bw = font.width(back) + 12;
-            g.fill(x, y, x + bw, y + 14, inside(x, y, bw, 14) ? 0xFF2E2E42 : 0xFF1C1C2B);
+            rounded(g, x, y, bw, 16, 6, inside(x, y, bw, 16) ? 0xFF343047 : 0xFF242431);
             g.text(font, back, x + 6, y + 3, SUB, false);
             hit(x, y, bw, 14, () -> selected = -1);
             g.text(font, tr(d.nameKey), x + bw + 8, y + 3, TEXT, true);
@@ -666,7 +696,7 @@ public class TokiaMenuScreen extends Screen {
         @Override
         int render(GuiGraphicsExtractor g, int x, int y, int w) {
             int bw = font.width(label) + 16;
-            g.fill(x + 6, y + 3, x + 6 + bw, y + 19, inside(x + 6, y + 3, bw, 16) ? 0xFF2E2E42 : 0xFF1C1C2B);
+            rounded(g, x + 6, y + 3, bw, 18, 6, inside(x + 6, y + 3, bw, 18) ? 0xFF343047 : 0xFF242431);
             g.text(font, label, x + 14, y + 7, TEXT, false);
             hit(x + 6, y + 3, bw, 16, action);
             return 22;
